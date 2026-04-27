@@ -1,0 +1,37 @@
+{
+  "name": "arxiv-daily",
+  "productName": "arXiv Daily",
+  "private": true,
+  "version": "0.2.0",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "dev:electron": "tsc -p tsconfig.node.json && electron .",
+    "build": "vue-tsc --noEmit -p tsconfig.web.json && vite build && tsc -b tsconfig.node.json && node -e \"const fs=require('fs');const p=require('path');fs.cpSync('src/main/database/migrations','dist/main/database/migrations',{recursive:true});fs.mkdirSync('dist/main/wasm',{recursive:true});fs.cpSync('node_modules/sql.js/dist/sql-wasm.wasm','dist/main/wasm/sql-wasm.wasm')\"",
+    "package": "npm run build && electron-builder",
+    "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.1",
+    "https-proxy-agent": "^5.0.1",
+    "katex": "^0.16.45",
+    "marked": "^18.0.2",
+    "pdf-parse": "^2.4.5",
+    "pinia": "^3.0.4",
+    "sql.js": "^1.11.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@electron/notarize": "^2.3.0",
+    "@types/dompurify": "^3.0.5",
+    "@types/node": "^22.0.0",
+    "@types/pdf-parse": "^1.1.5",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3",
+    "vue-tsc": "^2.1.10"
+  }
+}

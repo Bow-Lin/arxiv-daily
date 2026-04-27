@@ -1,0 +1,17 @@
+.env
+*.db
+*.sqlite
+
+# Node
+node_modules/
+dist/
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+
+# Electron
+release/
+*.tsbuildinfo
