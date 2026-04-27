@@ -14,7 +14,6 @@ function createWindow(): BrowserWindow {
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 20 },
-    icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -63,18 +62,16 @@ app.whenReady().then(async () => {
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
   if (process.platform === 'darwin') {
-    app.dock.setIcon(join(__dirname, '../../resources/icon.png'));
+    app.dock.setIcon(await app.getFileIcon(process.execPath));
   }
 
   const db = new Database(join(app.getPath('userData'), 'arxiv_papers.db'));
   await db.init();
-  const win = createWindow();
-  registerIpcHandlers(db, win);
+  registerIpcHandlers(db, createWindow());
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      const win = createWindow();
-      registerIpcHandlers(db, win);
+      createWindow();
     }
   });
 });
