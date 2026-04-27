@@ -3,6 +3,8 @@
   "productName": "arXiv Daily",
   "private": true,
   "version": "0.2.0",
+  "description": "Desktop app for fetching, filtering and analyzing arXiv papers",
+  "author": "arXiv Daily Developer",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "vite",

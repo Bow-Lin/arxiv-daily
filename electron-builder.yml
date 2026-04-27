@@ -23,3 +23,10 @@ dmg:
       y: 220
       type: link
       path: /Applications
+win:
+  target:
+    - portable
+linux:
+  target:
+    - AppImage
+  category: Utility
