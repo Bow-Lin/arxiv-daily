@@ -68,7 +68,7 @@ import { isAnalyzed as checkAnalyzed } from '../../types/paper'
 import { useSummaryQueueStore } from '../../stores/analysisQueue'
 import { useAnalysisQueueStore } from '../../stores/paperAnalysisQueue'
 import { renderLatex, renderMarkdown } from '../../utils/katex'
-import { formatDate, formatDateFull } from '../../utils/format'
+import { formatDateFull } from '../../utils/format'
 import 'katex/dist/katex.min.css'
 
 const props = defineProps<{

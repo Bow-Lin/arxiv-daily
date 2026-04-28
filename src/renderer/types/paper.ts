@@ -6,6 +6,7 @@ export interface Paper {
   url: string
   pdf_url: string
   published_date: string
+  updated_date: string
   categories: string[]
   fetched_at: string
 }
