@@ -6,7 +6,7 @@
       <div class="detail-meta">
         <p><strong>作者:</strong> {{ paper.authors.join(', ') }}</p>
         <p><strong>分类:</strong> {{ paper.categories.join(', ') }}</p>
-        <p><strong>发布:</strong> {{ formatDate(paper.published_date) }}</p>
+        <p><strong>更新时间:</strong> {{ formatDateFull(paper.updated_date) }}</p>
         <p><strong>arXiv ID:</strong> {{ paper.id }}</p>
       </div>
 
@@ -14,7 +14,7 @@
         <a :href="paper.url" target="_blank" rel="noopener noreferrer" class="action-link">arXiv</a>
         <a :href="paper.pdf_url" target="_blank" rel="noopener noreferrer" class="action-link">PDF</a>
         <button class="action-link action-analyze" :disabled="isInQueue" @click="addToQueue">
-          {{ isCurrentPaper ? '分析中...' : isInQueue ? '排队中...' : '分析论文' }}
+          {{ isCurrentPaper ? '总结中...' : isInQueue ? '排队中...' : '论文总结' }}
         </button>
         <button class="action-link action-deep" :disabled="isAnalysisInQueue" @click="addToAnalysisQueue">
           {{ isAnalysisCurrentPaper ? '分析中...' : isAnalysisInQueue ? '排队中...' : '论文分析' }}
@@ -68,7 +68,7 @@ import { isAnalyzed as checkAnalyzed } from '../../types/paper'
 import { useSummaryQueueStore } from '../../stores/analysisQueue'
 import { useAnalysisQueueStore } from '../../stores/paperAnalysisQueue'
 import { renderLatex, renderMarkdown } from '../../utils/katex'
-import { formatDate } from '../../utils/format'
+import { formatDate, formatDateFull } from '../../utils/format'
 import 'katex/dist/katex.min.css'
 
 const props = defineProps<{

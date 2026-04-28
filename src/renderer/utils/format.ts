@@ -6,6 +6,14 @@ export function formatDate(dateStr: string): string {
   return `${Number(m)}月${Number(d)}日`
 }
 
+export function formatDateFull(dateStr: string): string {
+  if (!dateStr) return ''
+  const dateOnly = dateStr.split('T')[0]
+  const [y, m, d] = dateOnly.split('-')
+  if (!y || !m || !d) return dateStr
+  return `${y}年${Number(m)}月${Number(d)}日`
+}
+
 export function truncate(title: string, max = 40): string {
   if (title.length <= max) return title
   return `${Array.from(title).slice(0, max).join('')}...`

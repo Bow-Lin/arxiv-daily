@@ -61,10 +61,6 @@ app.whenReady().then(async () => {
     { role: 'windowMenu' as const },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
-  if (process.platform === 'darwin') {
-    app.dock.setIcon(await app.getFileIcon(process.execPath));
-  }
-
   const db = new Database(join(app.getPath('userData'), 'arxiv_papers.db'));
   await db.init();
   registerIpcHandlers(db, createWindow());

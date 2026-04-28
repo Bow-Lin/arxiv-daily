@@ -9,6 +9,7 @@ files:
   - dist/**/*
   - node_modules/sql.js/**/*
 mac:
+  icon: resources/icon.icns
   category: public.app-category.productivity
   hardenedRuntime: false
   gatekeeperAssess: false

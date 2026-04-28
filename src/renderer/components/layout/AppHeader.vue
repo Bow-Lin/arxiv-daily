@@ -17,7 +17,7 @@
         按日期抓取
       </button>
       <button class="btn-fetch-outline btn-analyze-color" :disabled="progressStore.isFetching" @click="analyzePapersAction">
-        分析论文
+        总结论文
       </button>
       <button ref="queueBtnRef" class="btn-queue" @click="showQueuePanel = !showQueuePanel">
         <span class="queue-icon">
