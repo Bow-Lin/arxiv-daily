@@ -27,7 +27,11 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' };
   });
 
-  mainWindow.loadURL('http://localhost:5173');
+  if (app.isPackaged) {
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+  } else {
+    mainWindow.loadURL('http://localhost:5173');
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
