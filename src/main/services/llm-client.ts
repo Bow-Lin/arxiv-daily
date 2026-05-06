@@ -6,7 +6,7 @@ export interface DeepAnalysisResult {
   analysis: string;
 }
 
-const SYSTEM_PROMPT = '你是一个学术论文分析专家。请客观分析论文的创新性和贡献，使用 Markdown 格式输出。';
+const SYSTEM_PROMPT = '你是一个学术论文快速评估专家。你擅长从论文摘要中精准提炼关键信息，并给出严格、客观的质量评估。使用 Markdown 格式输出，语言简洁，避免空洞的修饰词。数学公式使用 LaTeX 格式，行内公式用 $...$，独立公式用 $$...$$。';
 
 /**
  * Extract JSON from LLM response, handling ```json code blocks.
@@ -33,49 +33,47 @@ export class LLMClient {
    */
   async analyzePaper(title: string, abstractText: string, topics: string[], signal?: AbortSignal): Promise<AnalysisResult> {
     const topicsStr = topics.join(', ');
-    const prompt = `请分析以下学术论文，主要关注以下方面：
-
-1. 关键问题：文章解决的核心问题是什么？
-2. 主要方法：文章采用的技术方法或框架是什么？
-3. 指标效果：文章的主要实验结果和性能指标如何？
-4. 创新性评估（严格评价）
-
-创新性评估要求严格，请参考以下标准：
-- 1-3分：增量改进，仅在已有方法上做微调或组合，没有实质性新贡献
-- 4-6分：有一定创新性，提出了新的视角或改进方案，但整体框架仍是常规思路
-- 7-8分：较为显著的创新，提出了新的方法、架构或理论，且有扎实的实验支撑
-- 9-10分：突破性工作，开辟了新的研究方向或解决了长期未解决的核心难题
-注意：大多数论文的评分应在4-7分之间，8分及以上应有充分的理由。不要因为论文发表在顶级会议就给高分。
-
-论文标题：${title}
-
-论文摘要：${abstractText}
-
-相关话题：${topicsStr}
+    const prompt = `请分析以下学术论文，主要关注文章的关键问题、主要方法、指标效果，并评估文章的创新性。
 
 要求：
-1. 语言简洁，每个要点一个段落。
-2. 不要使用括号进行备注。
-3. 不允许使用列表和表格。
+1. 每个要点控制在1-3句以内，直击要点，不要铺垫。
+2. 不要使用括号进行备注，不允许使用列表和表格。
+3. 如果摘要中未提及某方面的信息，直接说明"摘要中未提及"，不要臆造内容。
 
-输出格式参考：
+输出格式：
 **1. 关键问题**
 
-[文章解决的核心问题是什么]
+[概括论文解决的核心问题]
 
 **2. 主要方法**
 
-[文章采用的技术方法或框架是什么]
+[概括核心技术方法或框架]
 
 **3. 指标效果**
 
-[文章的主要实验结果和性能指标如何]
+[概括主要实验结果和关键性能数据]
 
 **4. 创新性评估**
 
 **评分：[X/10]**
 
-**评估依据：**[评估的依据是什么，有哪些优点和缺点]`;
+**评估依据：**[具体说明优点和不足]
+
+创新性评分标准：
+- 1-3分：增量改进，仅在已有方法上做微调或组合，无实质性新贡献
+- 4-6分：有一定创新，提出新视角或改进方案，但整体框架仍是常规思路
+- 7-8分：显著创新，提出新方法、架构或理论，且有扎实实验支撑
+- 9-10分：突破性工作，开辟新研究方向或解决长期悬而未决的核心难题
+
+注意：大多数论文评分应在4-7分之间，8分及以上需充分理由，不要因发表在顶级会议就给高分。
+
+以下是论文的信息：
+
+论文标题：${title}
+
+论文摘要：${abstractText}
+
+相关话题：${topicsStr}`;
 
     const request = {
       model: this.model,
@@ -156,14 +154,33 @@ export class LLMClient {
    * Deep-analyze a full paper (title + extracted PDF text).
    */
   async analyzeFullPaper(title: string, fullText: string, signal?: AbortSignal): Promise<DeepAnalysisResult> {
-    const prompt = `Please perform a deep analysis of the following paper, focusing on these aspects:
+    const prompt = `Please perform a deep analysis of the following academic paper. Be specific and grounded in the paper's content — cite specific methods, numbers, and claims rather than giving vague descriptions.
 
-1. Core Problem & Motivation: What problem does the paper address? Why is it important?
-2. Methodology Details: What are the specific technical approaches, architecture design, and algorithmic pipelines?
-3. Experimental Conclusions: What is the experimental setup? Which methods are compared? What are the key performance metrics?
-4. Strengths: What are the novel contributions? What is the practical value? How generalizable is the approach?
-5. Weaknesses: What are the limitations? Which scenarios are not covered? What potential issues exist?
-6. Key Conclusions: What are the core findings? What key conclusions are supported by data? What does the author emphasize?
+Output template:
+
+## 1. Core Problem & Motivation
+
+[What specific problem does the paper address? What are the limitations of existing approaches that motivate this work?]
+
+## 2. Methodology Details
+
+[Describe the technical approach in detail: architecture, key components, loss functions, training strategies. What design choices were made and why?]
+
+## 3. Experimental Conclusions
+
+[Benchmarks used, baselines compared, key quantitative results. Are the improvements consistent across datasets/tasks? Are ablation studies included?]
+
+## 4. Strengths
+
+[Novel contributions, practical value, generalizability. What would be hard to replicate without this paper?]
+
+## 5. Weaknesses
+
+[Limitations, unsupported claims, missing baselines, potential biases in evaluation. Under what conditions might the method fail?]
+
+## 6. Key Conclusions
+
+[Core findings, whether the claims are well-supported by evidence, and what future directions are suggested.]
 
 Paper Title: ${title}
 
@@ -173,7 +190,7 @@ ${fullText}`;
     const request = {
       model: this.model,
       messages: [
-        { role: 'system', content: 'You are an expert in academic paper analysis. Carefully read the full text of the paper and provide a thorough, accurate analysis. Respond in English using Markdown format.' },
+        { role: 'system', content: 'You are an expert in academic paper deep analysis. Read the full text carefully and provide a rigorous, objective analysis. Focus on technical soundness, experimental rigor, and practical significance. Respond in English using Markdown format. Use LaTeX for mathematical expressions: inline math with $...$ and display math with $$...$$.' },
         { role: 'user', content: prompt },
       ],
       temperature: this.temperature,

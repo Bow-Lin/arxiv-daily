@@ -2,7 +2,7 @@
   "name": "arxiv-daily",
   "productName": "arXiv Daily",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Desktop app for fetching, filtering and analyzing arXiv papers",
   "author": "arXiv Daily Developer",
   "main": "dist/main/index.js",
