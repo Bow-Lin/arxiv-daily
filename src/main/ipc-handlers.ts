@@ -316,10 +316,8 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
 
     // 3. Create all child items
     if (children.length > 0) {
-      console.log('[Zotero] Creating child items:', JSON.stringify(children, null, 2));
       await createChildItems(config.user_id, config.api_key, children);
     } else {
-      console.log('[Zotero] No child items to create');
     }
 
     return { success: true, itemKey };

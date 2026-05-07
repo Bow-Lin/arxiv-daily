@@ -13,7 +13,7 @@ function createWindow(): BrowserWindow {
     minWidth: 842,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 16, y: 20 },
+    trafficLightPosition: { x: 16, y: 16 },
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,

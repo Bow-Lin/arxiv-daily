@@ -27,6 +27,7 @@
           </button>
           <div v-if="showZoteroMenu" class="zotero-menu">
             <div v-if="loadingCollections" class="zotero-menu-loading">加载中...</div>
+            <div v-else-if="zoteroError" class="zotero-menu-empty">{{ zoteroError }}</div>
             <div v-else-if="collections.length === 0" class="zotero-menu-empty">暂无集合</div>
             <div v-else>
               <div v-for="c in collections" :key="c.key" class="zotero-menu-item" @click="doExportToZotero(c.key)">
@@ -91,6 +92,7 @@ import { isAnalyzed as checkAnalyzed } from '../../types/paper'
 import { useSummaryQueueStore } from '../../stores/analysisQueue'
 import { useAnalysisQueueStore } from '../../stores/paperAnalysisQueue'
 import { useToastStore } from '../../stores/toast'
+import { usePapersStore } from '../../stores/papers'
 import { renderLatex, renderMarkdown, renderMarkdownOnly } from '../../utils/katex'
 import { formatDateFull } from '../../utils/format'
 import { listZoteroCollections, exportPaperToZotero } from '../../api'
@@ -104,6 +106,7 @@ const props = defineProps<{
 const queueStore = useSummaryQueueStore()
 const analysisQueueStore = useAnalysisQueueStore()
 const toastStore = useToastStore()
+const papersStore = usePapersStore()
 
 const activeTab = ref<'abstract' | 'summary' | 'analysis'>('abstract')
 const isDownloadingPdf = ref(false)
@@ -111,6 +114,7 @@ const isPdfCached = ref(false)
 const downloadProgress = ref(0)
 const showZoteroMenu = ref(false)
 const collections = ref<ZoteroCollection[]>([])
+const zoteroError = ref('')
 const loadingCollections = ref(false)
 const exportingToZotero = ref(false)
 const showMoreMenu = ref(false)
@@ -179,12 +183,12 @@ const downloadPdf = async () => {
   downloadProgress.value = 0
   try {
     await (window as any).api.downloadPdf(props.paper.id)
+    isPdfCached.value = true
   } catch (err) {
     console.error('Failed to download PDF:', err)
   } finally {
     isDownloadingPdf.value = false
     downloadProgress.value = 0
-    isPdfCached.value = true
   }
 }
 
@@ -205,7 +209,7 @@ const doDeleteSummary = async () => {
   showMoreMenu.value = false
   try {
     await (window as any).api.deleteSummary(props.paper.id)
-    props.paper.summary = ''
+    papersStore.selectPaper(props.paper.id)
     toastStore.show('已删除', '论文总结已删除', 'success')
   } catch (err) {
     toastStore.show('删除失败', err instanceof Error ? err.message : String(err), 'error')
@@ -217,7 +221,7 @@ const doDeleteAnalysis = async () => {
   showMoreMenu.value = false
   try {
     await (window as any).api.deleteAnalysis(props.paper.id)
-    props.paper.analysis = ''
+    papersStore.selectPaper(props.paper.id)
     toastStore.show('已删除', '论文分析已删除', 'success')
   } catch (err) {
     toastStore.show('删除失败', err instanceof Error ? err.message : String(err), 'error')
@@ -237,10 +241,19 @@ const toggleMenu = (menu: 'zotero' | 'more') => {
 const loadCollectionsIfNeeded = async () => {
   if (collections.value.length === 0 && !loadingCollections.value) {
     loadingCollections.value = true
+    zoteroError.value = ''
     try {
       collections.value = await listZoteroCollections()
-    } catch {
+    } catch (err) {
       collections.value = []
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('未配置') || msg.includes('API Key') || msg.includes('User ID')) {
+        zoteroError.value = '请先在设置中配置 Zotero'
+        toastStore.show('未配置', '请先在设置中配置 Zotero API Key 和 User ID', 'error')
+      } else {
+        zoteroError.value = 'Zotero 连接失败'
+        toastStore.show('连接失败', `无法访问 Zotero API: ${msg}`, 'error')
+      }
     } finally {
       loadingCollections.value = false
     }

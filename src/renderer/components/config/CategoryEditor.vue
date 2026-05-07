@@ -71,7 +71,7 @@ const saveNew = async () => {
 }
 
 .category-editor h3 {
-  margin-bottom: 4px;
+  margin-bottom: 12px;
   font-size: 16px;
 }
 
@@ -82,7 +82,7 @@ const saveNew = async () => {
 }
 
 .category-list {
-  margin-bottom: 16px;
+  margin-bottom: 6px;
 }
 
 .category-item {

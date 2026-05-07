@@ -45,7 +45,6 @@ async function fetchPapersInRange(
       }
       const [inserted] = savePapers(db, papers);
       totalNew += inserted;
-      console.log(`[fetch] ${category} (${startDate}~${endDate}): ${papers.length} results, ${inserted} new`);
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
       console.error(`[fetch] Failed for ${category}:`, errMsg);

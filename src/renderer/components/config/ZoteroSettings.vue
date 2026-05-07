@@ -1,23 +1,37 @@
 <template>
   <div class="zotero-settings">
-    <h3>Zotero</h3>
-
-    <div class="form-row">
-      <label>API Key</label>
-      <input v-model="configStore.zoteroConfig.api_key" placeholder="Zotero API Key" @change="save" />
-    </div>
+    <h3>Zotero 设置</h3>
 
     <div class="form-row">
       <label>User ID</label>
       <input v-model="configStore.zoteroConfig.user_id" placeholder="数字 ID" @change="save" />
     </div>
+
+    <div class="form-row">
+      <label>API Key</label>
+      <div class="input-wrapper">
+        <input
+          v-model="configStore.zoteroConfig.api_key"
+          :type="showApiKey ? 'text' : 'password'"
+          placeholder="Zotero API Key"
+          @change="save"
+        />
+        <button class="toggle-visibility" @click="showApiKey = !showApiKey">
+          <Eye v-if="!showApiKey" :size="16" />
+          <EyeOff v-else :size="16" />
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+import { Eye, EyeOff } from 'lucide-vue-next'
 import { useConfigStore } from '../../stores/config'
 
 const configStore = useConfigStore()
+const showApiKey = ref(false)
 
 const save = async () => {
   try {
@@ -37,7 +51,7 @@ const save = async () => {
 }
 
 .zotero-settings h3 {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   font-size: 16px;
 }
 
@@ -46,6 +60,10 @@ const save = async () => {
   align-items: center;
   margin-bottom: 12px;
   gap: 12px;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
 }
 
 .form-row label {
@@ -63,5 +81,37 @@ const save = async () => {
   font-size: 14px;
   height: 36px;
   box-sizing: border-box;
+}
+
+.input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrapper input {
+  padding-right: 36px;
+}
+
+.toggle-visibility {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.toggle-visibility:hover {
+  color: #6b7280;
 }
 </style>

@@ -84,7 +84,6 @@ export async function fetchFromApi(
 
   while (true) {
     const url = `${ARXIV_API_BASE}?search_query=${encodeURIComponent(searchQuery)}&start=${start}&max_results=${MAX_PER_PAGE}`;
-    console.log(`Fetching arXiv API: ${url}`);
 
     const { body, statusCode } = await proxyFetch(url, {
       headers: { 'User-Agent': 'ArxivDailyGUI/1.0' },
@@ -105,7 +104,6 @@ export async function fetchFromApi(
       allPapers.push(entry);
     }
 
-    console.log(`  Page ${Math.floor(start / MAX_PER_PAGE) + 1}: ${entries.length} entries, total unique: ${allPapers.length}`);
 
     if (entries.length < MAX_PER_PAGE) break;
     start += MAX_PER_PAGE;

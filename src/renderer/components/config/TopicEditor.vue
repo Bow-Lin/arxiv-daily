@@ -129,12 +129,12 @@ const deleteTopic = async (id: number) => {
 }
 
 .topic-editor h3 {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   font-size: 16px;
 }
 
 .topics-list {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .topic-item {

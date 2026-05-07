@@ -6,18 +6,10 @@
       <label>API Key</label>
       <div class="input-wrapper">
         <input v-model="configStore.llmConfig.api_key" :type="showApiKey ? 'text' : 'password'" placeholder="sk-..." @change="save" class="input-icon-right" />
-        <svg class="eye-icon" @click="showApiKey = !showApiKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <template v-if="showApiKey">
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-            <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-            <line x1="1" y1="1" x2="23" y2="23"/>
-          </template>
-          <template v-else>
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </template>
-        </svg>
+        <button class="toggle-visibility" @click="showApiKey = !showApiKey">
+          <Eye v-if="!showApiKey" :size="16" />
+          <EyeOff v-else :size="16" />
+        </button>
       </div>
     </div>
 
@@ -45,24 +37,11 @@
       </span>
     </div>
   </div>
-
-  <div class="proxy-settings">
-    <h3>网络设置</h3>
-
-    <div class="form-row">
-      <label>HTTP 代理</label>
-      <input v-model="configStore.proxyConfig.http" placeholder="http://127.0.0.1:7890" @change="save" />
-    </div>
-
-    <div class="form-row">
-      <label>HTTPS 代理</label>
-      <input v-model="configStore.proxyConfig.https" placeholder="http://127.0.0.1:7890" @change="save" />
-    </div>
-  </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Eye, EyeOff } from 'lucide-vue-next'
 import { useConfigStore } from '../../stores/config'
 import { testLLMConnection } from '../../api'
 
@@ -115,7 +94,7 @@ const testConnection = async () => {
 }
 
 .llm-settings h3 {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   font-size: 16px;
 }
 
@@ -124,6 +103,10 @@ const testConnection = async () => {
   align-items: center;
   margin-bottom: 12px;
   gap: 12px;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
 }
 
 .form-row label {
@@ -136,26 +119,32 @@ const testConnection = async () => {
 .input-wrapper {
   position: relative;
   flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 .input-icon-right {
-  padding-right: 36px;
+  padding-right: 38px;
 }
 
-.eye-icon {
+.toggle-visibility {
   position: absolute;
-  right: 8px;
+  right: 4px;
   top: 50%;
   transform: translateY(-50%);
-  cursor: pointer;
-  width: 16px;
-  height: 16px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
   color: #9ca3af;
-  user-select: none;
-  transition: color 0.15s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
 }
 
-.eye-icon:hover {
+.toggle-visibility:hover {
   color: #6b7280;
 }
 
@@ -170,14 +159,15 @@ const testConnection = async () => {
 }
 
 .input-wrapper input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .test-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 12px;
   padding-left: 112px;
 }
 
@@ -207,17 +197,5 @@ const testConnection = async () => {
 .test-error {
   color: #dc2626;
   font-size: 13px;
-}
-
-.proxy-settings {
-  background: #f9fafb;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.proxy-settings h3 {
-  margin-bottom: 16px;
-  font-size: 16px;
 }
 </style>

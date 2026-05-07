@@ -1,8 +1,6 @@
 <template>
   <div class="paper-list">
     <div class="paper-list-header">
-      <PaperFilters @search="handleSearch" />
-
       <div class="topic-tags">
         <span
           class="topic-tag"
@@ -23,7 +21,7 @@
       </div>
 
       <p v-if="!papersStore.loading && papersStore.papers.length > 0" class="result-summary">
-        共找到 {{ papersStore.pagination.total }} 篇文章
+        共 {{ papersStore.pagination.total }} 篇论文
       </p>
     </div>
 
@@ -58,7 +56,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import PaperCard from './PaperCard.vue'
-import PaperFilters from './PaperFilters.vue'
 import LoadingSpinner from '../ui/LoadingSpinner.vue'
 import { usePapersStore } from '../../stores/papers'
 import { useConfigStore } from '../../stores/config'
@@ -81,10 +78,6 @@ const emit = defineEmits<{
 }>()
 
 const selectPaper = (paperId: string) => emit('select', paperId)
-
-const handleSearch = (query: string) => {
-  papersStore.loadPapers({ search: query })
-}
 
 const loadMore = async () => {
   if (loadingMore.value || !hasMore.value) return
@@ -119,7 +112,7 @@ const retry = () => {
 
 .paper-list-header {
   flex-shrink: 0;
-  padding: 24px 24px 4px;
+  padding: 4px 12px 4px;
   border-bottom: 1px solid #e8e8e8;
 }
 
@@ -133,7 +126,7 @@ const retry = () => {
 .topic-tags {
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 8px;
 }
 
 .topic-tag {

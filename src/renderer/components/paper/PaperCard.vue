@@ -2,7 +2,7 @@
   <div class="paper-card" :class="{ selected: isSelected }" @click="selectPaper">
     <div class="card-header">
       <h3 class="paper-title">{{ paper.title }}</h3>
-      <span class="paper-date">{{ formatDate(paper.published_date) }}</span>
+      <span class="paper-date">{{ formatDate(paper.updated_date) }}</span>
     </div>
     <p class="paper-authors">{{ formatAuthors(paper.authors) }}</p>
     <div class="card-footer">

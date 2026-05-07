@@ -1,10 +1,8 @@
 <template>
   <div class="config-view">
-    <header class="config-header">
+    <header class="config-header" :class="{ 'no-titlebar-indent': !isMac }">
       <button class="back-btn" @click="goBack">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
+        <ChevronLeft :size="20" />
       </button>
       <h1>设置</h1>
     </header>
@@ -14,6 +12,7 @@
       <TopicEditor />
       <LLMSettings />
       <ZoteroSettings />
+      <NetworkSettings />
 
       <div class="config-actions">
         <button class="btn-primary" @click="saveAll">保存设置</button>
@@ -40,37 +39,35 @@
         </button>
       </div>
     </div>
-
-    <div v-if="showSuccess" class="success-toast">
-      ✅ {{ successMsg }}
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ChevronLeft } from 'lucide-vue-next'
 import TopicEditor from '../components/config/TopicEditor.vue'
 import CategoryEditor from '../components/config/CategoryEditor.vue'
 import LLMSettings from '../components/config/LLMSettings.vue'
+import NetworkSettings from '../components/config/NetworkSettings.vue'
 import ZoteroSettings from '../components/config/ZoteroSettings.vue'
 import { useConfigStore } from '../stores/config'
 import { usePapersStore } from '../stores/papers'
+import { useToastStore } from '../stores/toast'
 import { clearData, clearAnalyses } from '../api'
 
 const router = useRouter()
+const isMac = navigator.userAgentData?.platform === 'macOS'
+  || navigator.platform.toUpperCase().indexOf('MAC') >= 0
 const configStore = useConfigStore()
 const papersStore = usePapersStore()
-const showSuccess = ref(false)
-const successMsg = ref('设置已保存')
+const toastStore = useToastStore()
 const confirmClearData = ref(false)
 const confirmClearAnalyses = ref(false)
-let successTimer: number | null = null
 let confirmDataTimer: number | null = null
 let confirmAnalysesTimer: number | null = null
 
 const clearAllTimers = () => {
-  if (successTimer) { clearTimeout(successTimer); successTimer = null }
   if (confirmDataTimer) { clearTimeout(confirmDataTimer); confirmDataTimer = null }
   if (confirmAnalysesTimer) { clearTimeout(confirmAnalysesTimer); confirmAnalysesTimer = null }
 }
@@ -79,19 +76,12 @@ onUnmounted(() => {
   clearAllTimers()
 })
 
-const showSuccessToast = (msg: string) => {
-  if (successTimer) clearTimeout(successTimer)
-  successMsg.value = msg
-  showSuccess.value = true
-  successTimer = window.setTimeout(() => { showSuccess.value = false }, 2000)
-}
-
 const goBack = () => router.push('/')
 
 const saveAll = async () => {
   try {
     await configStore.saveAll()
-    showSuccessToast('设置已保存')
+    toastStore.show('保存成功', '设置已保存', 'success')
   } catch (err) {
     console.error('Failed to save config:', err)
     alert('保存失败: ' + (err instanceof Error ? err.message : String(err)))
@@ -108,10 +98,10 @@ const handleClearData = async () => {
   confirmClearData.value = false
   try {
     await clearData()
-    papersStore.papers = []
+    papersStore.clearPapers()
     papersStore.loadPapers()
     papersStore.loadFetchDates()
-    showSuccessToast('数据已清空')
+    toastStore.show('已清空', '数据已清空', 'success')
   } catch (err) {
     alert('清空数据失败: ' + (err instanceof Error ? err.message : err))
   }
@@ -127,9 +117,10 @@ const handleClearAnalyses = async () => {
   confirmClearAnalyses.value = false
   try {
     await clearAnalyses()
-    papersStore.papers = []
+    papersStore.clearPapers()
     papersStore.loadPapers()
-    showSuccessToast('分析数据已清空')
+    papersStore.loadFetchDates()
+    toastStore.show('已清空', '分析数据已清空', 'success')
   } catch (err) {
     alert('清空分析数据失败: ' + (err instanceof Error ? err.message : err))
   }
@@ -144,23 +135,27 @@ const handleClearAnalyses = async () => {
 }
 
 .config-header {
-  height: 60px;
+  height: 48px;
   background: #fff;
   border-bottom: 1px solid #e8e8e8;
   display: flex;
   align-items: center;
-  padding: 0 24px 0 80px; /* 左侧留出 macOS 交通灯空间 */
+  padding: 0 24px 0 80px;
   -webkit-app-region: drag;
-  gap: 16px;
+  gap: 12px;
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.config-header.no-titlebar-indent {
+  padding-left: 24px;
 }
 
 .back-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  color: #6b7280;
   -webkit-app-region: no-drag;
   border: none;
   background: transparent;
@@ -176,8 +171,9 @@ const handleClearAnalyses = async () => {
 }
 
 .config-header h1 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
+  color: #6b7280;
 }
 
 .config-content {
@@ -259,29 +255,4 @@ const handleClearAnalyses = async () => {
   margin: 16px 0;
 }
 
-.success-toast {
-  position: fixed;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #10b981;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 6px;
-  font-size: 14px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 200;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
 </style>

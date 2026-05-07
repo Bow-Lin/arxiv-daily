@@ -5,16 +5,39 @@ import DOMPurify from 'dompurify'
 marked.use({ gfm: true })
 
 /**
- * Render LaTeX formulas and text-mode commands in text.
- * Supports:
- *   Inline math: $...$ or \(...\)
- *   Block math:  $$...$$ or \[...\]
- *   Text mode:   \textbf{...}, \textit{...}, \emph{...}, \underline{...}
+ * Extract LaTeX formulas from text and replace with placeholders.
+ * Returns { text, formulas } where text has %LATEX_0%, %LATEX_1%, etc.
  */
-export function renderLatex(text: string): string {
+function extractFormulas(text: string): { text: string; formulas: string[] } {
+  const formulas: string[] = []
+
+  // Extract block math ($$...$$ or \[...\])
+  let processed = text.replace(/\$\$([\s\S]*?)\$\$|\\\[(.*?)\\\]/g, (_match, dollar, bracket) => {
+    const tex = (dollar ?? bracket).trim()
+    const idx = formulas.length
+    formulas.push(tex)
+    return `%LATEX_BLOCK_${idx}%`
+  })
+
+  // Extract inline math ($...$ or \(...\))
+  processed = processed.replace(/\$([^\$\n]+?)\$|\\\((.+?)\\\)/g, (_match, dollar, bracket) => {
+    const tex = (dollar ?? bracket).trim()
+    const idx = formulas.length
+    formulas.push(tex)
+    return `%LATEX_INLINE_${idx}%`
+  })
+
+  return { text: processed, formulas }
+}
+
+/**
+ * Render LaTeX formulas in text that has been markdown-parsed to HTML.
+ * Handles text-mode commands and replaces placeholder tokens.
+ */
+function renderLatexTokens(text: string, formulas: string[]): string {
   if (!text) return ''
 
-  // 1. Convert text-mode LaTeX commands to HTML (before math processing to avoid conflicts)
+  // 1. Convert text-mode LaTeX commands to HTML (before math processing)
   let html = text
     .replace(/\\textbf\{([^}]*)\}/g, '<strong>$1</strong>')
     .replace(/\\textit\{([^}]*)\}/g, '<em>$1</em>')
@@ -22,27 +45,29 @@ export function renderLatex(text: string): string {
     .replace(/\\underline\{([^}]*)\}/g, '<u>$1</u>')
     .replace(/\\texttt\{([^}]*)\}/g, '<code>$1</code>')
 
-  // 2. Render block math ($$...$$ or \[...\])
-  html = html.replace(/\$\$([\s\S]*?)\$\$|\\\[[\s\S]*?\\\]/g, (match, formula) => {
-    const tex = extractTex(formula || match)
+  // 2. Render block math placeholders
+  html = html.replace(/%LATEX_BLOCK_(\d+)%/g, (_match, idx) => {
+    const tex = formulas[Number(idx)]
+    if (!tex) return _match
     try {
       return katex.renderToString(tex, { displayMode: true, throwOnError: false })
     } catch {
-      return match
+      return _match
     }
   })
 
-  // 3. Render inline math ($...$ or \(...\))
-  html = html.replace(/\$([^\$\n]+?)\$|\\\((.+?)\\\)/g, (match, inline1, inline2) => {
-    const tex = extractTex(inline1 || inline2 || match)
+  // 3. Render inline math placeholders
+  html = html.replace(/%LATEX_INLINE_(\d+)%/g, (_match, idx) => {
+    const tex = formulas[Number(idx)]
+    if (!tex) return _match
     try {
       return katex.renderToString(tex, { displayMode: false, throwOnError: false })
     } catch {
-      return match
+      return _match
     }
   })
 
-  return sanitize(html)
+  return html
 }
 
 function sanitize(html: string): string {
@@ -61,28 +86,36 @@ function sanitize(html: string): string {
   })
 }
 
-function extractTex(s: string): string {
-  return s.replace(/^\\\(|\\\)$/, '').trim()
+/**
+ * Render LaTeX formulas and text-mode commands in plain text.
+ * For use with non-HTML content (e.g., abstracts).
+ */
+export function renderLatex(text: string): string {
+  if (!text) return ''
+  const { text: extracted, formulas } = extractFormulas(text)
+  return sanitize(renderLatexTokens(extracted, formulas))
 }
 
 /**
- * Render Markdown text, then apply LaTeX rendering.
+ * Render Markdown text with LaTeX support.
+ * LaTeX formulas are extracted before markdown parsing to avoid HTML corruption.
  */
 export function renderMarkdown(text: string): string {
   if (!text) return ''
-  // Pre-process: insert zero-width spaces around ** when adjacent to CJK chars
   const preprocessed = preprocessCJK(text)
-  const html = marked.parse(preprocessed, { async: false }) as string
-  return sanitize(renderLatex(html))
+  const { text: extracted, formulas } = extractFormulas(preprocessed)
+  const html = marked.parse(extracted, { async: false }) as string
+  return sanitize(renderLatexTokens(html, formulas))
 }
 
 /**
- * Render Markdown to HTML only, without LaTeX or sanitization.
+ * Render Markdown to sanitized HTML, without LaTeX rendering.
  */
 export function renderMarkdownOnly(text: string): string {
   if (!text) return ''
   const preprocessed = preprocessCJK(text)
-  return marked.parse(preprocessed, { async: false }) as string
+  const html = marked.parse(preprocessed, { async: false }) as string
+  return sanitize(html)
 }
 
 const CJK_RANGE = '\\u2e80-\\u9fff\\uf900-\\ufaff\\u3400-\\u4dbf\\u3000-\\u303f\\uff00-\\uffef'

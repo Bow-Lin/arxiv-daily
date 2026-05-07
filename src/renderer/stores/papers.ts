@@ -13,6 +13,7 @@ export const usePapersStore = defineStore('papers', () => {
   const selectedPaperId = ref<string | null>(null)
   const selectedDate = ref<string | null>(null) // null = "全部"
   const selectedTopicId = ref<number | null>(null) // null = "全部"
+  const searchQuery = ref('')
   const loading = ref(false)
   const error = ref<string | null>(null)
   const pagination = ref({
@@ -49,14 +50,18 @@ export const usePapersStore = defineStore('papers', () => {
     page?: number
   } = {}) => {
     const requestId = ++loadRequestId
-    // Only show loading state on initial load, not when appending pages
+    // Only show loading spinner on initial load (empty list)
     if (!params.page || params.page <= 1) {
       loading.value = papers.value.length === 0
     }
     error.value = null
+    // If search param is provided, sync it to store; otherwise use store's searchQuery
+    if (params.search !== undefined) {
+      searchQuery.value = params.search
+    }
     try {
       const result = await listPapers({
-        search: params.search,
+        search: searchQuery.value || undefined,
         fetchDate: selectedDate.value || undefined,
         topicId: selectedTopicId.value || undefined,
         page: params.page || 1,
@@ -111,6 +116,13 @@ export const usePapersStore = defineStore('papers', () => {
     selectedPaperId.value = null
   }
 
+  const clearPapers = () => {
+    papers.value = []
+    selectedPaperId.value = null
+    pagination.value.total = 0
+    pagination.value.page = 1
+  }
+
   const analyzeCurrentPaper = async () => {
     if (!selectedPaperId.value) return
     try {
@@ -130,10 +142,10 @@ export const usePapersStore = defineStore('papers', () => {
   loadPapers()
 
   return {
-    papers, fetchDates, selectedDate, selectedTopicId,
+    papers, fetchDates, selectedDate, selectedTopicId, searchQuery,
     selectedPaperId, selectedPaper,
     loading, error, pagination, totalCount,
     loadFetchDates, loadPapers, selectDate, selectTopic,
-    selectPaper, clearSelection, analyzeCurrentPaper,
+    selectPaper, clearSelection, clearPapers, analyzeCurrentPaper,
   }
 })

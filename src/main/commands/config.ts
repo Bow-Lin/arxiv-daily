@@ -142,7 +142,6 @@ export function refreshAllPaperTopics(db: SqlJsDatabase): number {
     db.run('UPDATE papers SET relevance_topics = ? WHERE id = ?', [topicsJson, paperId]);
   }
 
-  console.log(`Refreshed relevance_topics for ${count} papers`);
   return count;
 }
 
@@ -259,8 +258,6 @@ export function getConfig(db: SqlJsDatabase): ConfigResponse {
  * Update application config (LLM + output + proxy).
  */
 export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputConfig, proxy: ProxyConfig, zotero?: ZoteroConfig): void {
-  console.log(`update_config: model=${llm.model}, temperature=${llm.temperature}`);
-
   // Save LLM config
   db.run(
     `INSERT INTO app_config (key, value) VALUES ('llm.api_key', ?)
