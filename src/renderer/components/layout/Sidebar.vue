@@ -13,7 +13,7 @@
         <Download :size="13" />
         指定日期
       </button>
-      <button class="btn-fetch btn-analyze" :disabled="progressStore.isFetching" @click="analyzePapersAction">
+      <button class="btn-fetch" :disabled="progressStore.isFetching" @click="analyzePapersAction">
         <PenLine :size="13" />
         总结论文
       </button>
