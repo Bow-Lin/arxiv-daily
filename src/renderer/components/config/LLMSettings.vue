@@ -4,7 +4,21 @@
 
     <div class="form-row">
       <label>API Key</label>
-      <input v-model="configStore.llmConfig.api_key" type="password" placeholder="sk-..." @change="save" />
+      <div class="input-wrapper">
+        <input v-model="configStore.llmConfig.api_key" :type="showApiKey ? 'text' : 'password'" placeholder="sk-..." @change="save" class="input-icon-right" />
+        <svg class="eye-icon" @click="showApiKey = !showApiKey" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <template v-if="showApiKey">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+            <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </template>
+          <template v-else>
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </template>
+        </svg>
+      </div>
     </div>
 
     <div class="form-row">
@@ -53,6 +67,7 @@ import { useConfigStore } from '../../stores/config'
 import { testLLMConnection } from '../../api'
 
 const configStore = useConfigStore()
+const showApiKey = ref(false)
 const testing = ref(false)
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 
@@ -118,6 +133,32 @@ const testConnection = async () => {
   flex-shrink: 0;
 }
 
+.input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.input-icon-right {
+  padding-right: 36px;
+}
+
+.eye-icon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.eye-icon:hover {
+  color: #6b7280;
+}
+
 .form-row input {
   flex: 1;
   padding: 8px 12px;
@@ -126,6 +167,10 @@ const testConnection = async () => {
   font-size: 14px;
   height: 36px;
   box-sizing: border-box;
+}
+
+.input-wrapper input {
+  width: 100%;
 }
 
 .test-row {

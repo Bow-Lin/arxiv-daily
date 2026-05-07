@@ -22,6 +22,11 @@ export interface ProxyConfig {
   https: string
 }
 
+export interface ZoteroConfig {
+  api_key: string
+  user_id: string
+}
+
 export interface Category {
   id: number
   name: string

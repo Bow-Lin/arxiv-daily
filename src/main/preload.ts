@@ -31,6 +31,24 @@ const api = {
   getUnanalyzedPaperIds: () => ipcRenderer.invoke('get-unanalyzed-paper-ids'),
   testLLMConnection: () => ipcRenderer.invoke('test-llm-connection'),
 
+  // PDF download
+  downloadPdf: (id: string) => ipcRenderer.invoke('download-pdf', id),
+  isPdfCached: (id: string) => ipcRenderer.invoke('is-pdf-cached', id),
+  deletePdf: (id: string) => ipcRenderer.invoke('delete-pdf', id),
+  deleteSummary: (id: string) => ipcRenderer.invoke('delete-summary', id),
+  deleteAnalysis: (id: string) => ipcRenderer.invoke('delete-analysis', id),
+  onPdfDownloadProgress: (callback: (data: { paperId: string; loaded: number; total?: number }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { paperId: string; loaded: number; total?: number }) => {
+      callback(data);
+    };
+    ipcRenderer.on('pdf-download-progress', handler);
+    return () => ipcRenderer.removeListener('pdf-download-progress', handler);
+  },
+
+  // Zotero
+  listZoteroCollections: () => ipcRenderer.invoke('list-zotero-collections'),
+  exportPaperToZotero: (paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string) => ipcRenderer.invoke('export-paper-to-zotero', paperId, collectionKey, summaryHtml, analysisHtml),
+
   // Analysis (full paper)
   analyzeFullPaper: (id: string) => ipcRenderer.invoke('analyze-full-paper', id),
   getPaperAnalysis: (id: string) => ipcRenderer.invoke('get-paper-analysis', id),

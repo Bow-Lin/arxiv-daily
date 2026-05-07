@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app } from 'electron';
+import { ipcMain, dialog, app, shell } from 'electron';
 import type { BrowserWindow } from 'electron';
 import type { Database } from './database/connection';
 import * as paperCmd from './commands/paper';
@@ -6,6 +6,10 @@ import * as configCmd from './commands/config';
 import * as fetchCmd from './commands/fetch';
 import * as summaryCmd from './commands/analysis';
 import * as analysisCmd from './services/paper-analyzer';
+import { ensurePdfDownloaded, getPdfPath } from './services/pdf-extractor';
+import { loadProxyConfig } from './commands/config';
+import { fetchCollections, createItem, createChildItems, type ChildItemPayload } from './services/zotero-client';
+import { loadZoteroConfig } from './commands/config';
 
 export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): void {
   const sqlDb = db.getDb();
@@ -41,7 +45,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     return configCmd.getConfig(sqlDb);
   });
   ipcMain.handle('update-config', async (_event, config) => {
-    configCmd.updateConfig(sqlDb, config.llm, config.output, config.proxy);
+    configCmd.updateConfig(sqlDb, config.llm, config.output, config.proxy, config.zotero);
     await db.save();
   });
   ipcMain.handle('list-categories', async () => {
@@ -130,6 +134,59 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     return summaryCmd.testLLMConnection(sqlDb);
   });
 
+  // PDF download
+  ipcMain.handle('download-pdf', async (_event, paperId) => {
+    const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
+    if (results.length === 0 || results[0].values.length === 0) {
+      throw new Error(`Paper ${paperId} not found`);
+    }
+    const pdfUrl = results[0].values[0][0] as string;
+    if (!pdfUrl) {
+      throw new Error(`Paper ${paperId} has no PDF URL`);
+    }
+    const proxyConfig = loadProxyConfig(sqlDb);
+    const filePath = await ensurePdfDownloaded(pdfUrl, undefined, app.getPath('userData'), proxyConfig, (loaded, total) => {
+      mainWindow.webContents.send('pdf-download-progress', { paperId, loaded, total });
+    });
+    await shell.openPath(filePath);
+    return filePath;
+  });
+
+  ipcMain.handle('is-pdf-cached', async (_event, paperId) => {
+    const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
+    if (results.length === 0 || results[0].values.length === 0) return false;
+    const pdfUrl = results[0].values[0][0] as string;
+    if (!pdfUrl) return false;
+    const localPath = getPdfPath(app.getPath('userData'), pdfUrl);
+    try {
+      await require('fs/promises').access(localPath);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle('delete-pdf', async (_event, paperId) => {
+    const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
+    if (results.length === 0 || results[0].values.length === 0) return;
+    const pdfUrl = results[0].values[0][0] as string;
+    if (!pdfUrl) return;
+    const localPath = getPdfPath(app.getPath('userData'), pdfUrl);
+    try {
+      await require('fs/promises').unlink(localPath);
+    } catch { /* ignore */ }
+  });
+
+  ipcMain.handle('delete-summary', async (_event, paperId) => {
+    sqlDb.exec('UPDATE analyses SET summary = \'\' WHERE paper_id = ?', [paperId]);
+    await db.save();
+  });
+
+  ipcMain.handle('delete-analysis', async (_event, paperId) => {
+    sqlDb.exec('UPDATE analyses SET analysis = \'\' WHERE paper_id = ?', [paperId]);
+    await db.save();
+  });
+
   // Analysis (full paper)
   ipcMain.handle('analyze-full-paper', async (_event, paperId) => {
     const controller = new AbortController();
@@ -158,6 +215,114 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
   });
   ipcMain.handle('stop-analysis', async () => {
     return summaryCmd.stopAnalysis();
+  });
+
+  // Zotero
+  ipcMain.handle('list-zotero-collections', async () => {
+    const config = loadZoteroConfig(sqlDb);
+    if (!config.api_key || !config.user_id) {
+      throw new Error('Zotero API Key 和 User ID 未配置');
+    }
+    return fetchCollections(config.user_id, config.api_key);
+  });
+
+  ipcMain.handle('export-paper-to-zotero', async (_event, paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string) => {
+    const config = loadZoteroConfig(sqlDb);
+    if (!config.api_key || !config.user_id) {
+      throw new Error('Zotero API Key 和 User ID 未配置');
+    }
+    // Fetch paper from DB
+    const results = sqlDb.exec(
+      'SELECT id, title, authors, abstract_text, url, pdf_url, doi, published_date, categories FROM papers WHERE id = ?',
+      [paperId],
+    );
+    if (results.length === 0 || results[0].values.length === 0) {
+      throw new Error(`Paper ${paperId} not found`);
+    }
+    const row = results[0].values[0];
+    const authors: string[] = JSON.parse(row[2] as string);
+    const creators = authors.map(name => {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length === 1) return { creatorType: 'author' as const, firstName: '', lastName: parts[0] };
+      return { creatorType: 'author' as const, firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] };
+    });
+
+    // Strip version suffix from arXiv ID (e.g. "2401.12345v2" → "2401.12345")
+    const arxivId = (row[0] as string).replace(/v\d+$/, '');
+    const pdfUrl = (row[5] as string) || '';
+    const doi = (row[6] as string) || '';
+    const publishedDate = (row[7] as string) || '';
+    const categories: string[] = JSON.parse(row[8] as string);
+
+    // 1. Create main item
+    const arxivRef = `arXiv:${arxivId}`;
+    const extraLines: string[] = [];
+    if (categories.length > 0) {
+      extraLines.push(`Categories: ${categories.join(', ')}`);
+    }
+    const itemKey = await createItem(config.user_id, config.api_key, collectionKey, {
+      itemType: 'preprint',
+      title: row[1] as string,
+      abstractNote: (row[3] as string) || '',
+      date: publishedDate,
+      DOI: doi,
+      url: ((row[4] as string) || '').replace(/v\d+$/, ''),
+      repository: 'arXiv',
+      archiveID: arxivRef,
+      extra: extraLines.join('\n'),
+      creators,
+      tags: [],
+      collections: [],
+    });
+
+    // 2. Build child items (PDF attachment + notes)
+    const children: ChildItemPayload[] = [];
+
+    // 2a. PDF attachment — only if already cached locally
+    if (pdfUrl) {
+      const localPath = getPdfPath(app.getPath('userData'), pdfUrl);
+      try {
+        await require('fs/promises').access(localPath);
+        children.push({
+          itemType: 'attachment',
+          parentItem: itemKey,
+          linkMode: 'linked_file',
+          path: localPath,
+          title: 'Full Text PDF',
+          contentType: 'application/pdf',
+          tags: [{ tag: 'arXiv' }],
+        });
+      } catch {
+        // PDF not cached locally, skip attachment
+      }
+    }
+
+    // 2b. Notes — use pre-converted HTML from renderer
+    const noteParts: string[] = [];
+    if (summaryHtml) {
+      noteParts.push(`<h1>论文总结</h1>${summaryHtml}`);
+    }
+    if (analysisHtml) {
+      noteParts.push(`<h1>论文分析</h1>${analysisHtml}`);
+    }
+    if (noteParts.length > 0) {
+      children.push({
+        itemType: 'note',
+        parentItem: itemKey,
+        note: noteParts.join('\n<hr>\n'),
+        tags: [],
+      });
+    }
+
+    // 3. Create all child items
+    if (children.length > 0) {
+      console.log('[Zotero] Creating child items:', JSON.stringify(children, null, 2));
+      await createChildItems(config.user_id, config.api_key, children);
+    } else {
+      console.log('[Zotero] No child items to create');
+    }
+
+    return { success: true, itemKey };
   });
 
   // Dialog

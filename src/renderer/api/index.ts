@@ -1,5 +1,5 @@
 import type { PaperWithAnalysis } from '../types/paper'
-import type { Topic, LLMConfig, OutputConfig, ProxyConfig, Category } from '../types/config'
+import type { Topic, LLMConfig, OutputConfig, ProxyConfig, ZoteroConfig, Category } from '../types/config'
 
 export interface PaginatedResult<T> {
   items: T[]
@@ -53,7 +53,7 @@ export const deleteTopic = async (topicId: number): Promise<void> => {
   return window.api.deleteTopic(topicId)
 }
 
-export const getConfig = async (): Promise<{ llm: LLMConfig; output: OutputConfig; proxy: ProxyConfig }> => {
+export const getConfig = async (): Promise<{ llm: LLMConfig; output: OutputConfig; proxy: ProxyConfig; zotero?: ZoteroConfig }> => {
   return window.api.getConfig()
 }
 
@@ -61,6 +61,7 @@ export const updateConfig = async (config: {
   llm: LLMConfig
   output: OutputConfig
   proxy: ProxyConfig
+  zotero?: ZoteroConfig
 }): Promise<void> => {
   return window.api.updateConfig(config)
 }
@@ -176,4 +177,19 @@ export const clearData = async (): Promise<{ success: boolean }> => {
 
 export const clearAnalyses = async (): Promise<{ success: boolean }> => {
   return window.api.clearAnalyses()
+}
+
+// Zotero API
+export interface ZoteroCollection {
+  key: string
+  name: string
+  numItems: number
+}
+
+export const listZoteroCollections = async (): Promise<ZoteroCollection[]> => {
+  return window.api.listZoteroCollections()
+}
+
+export const exportPaperToZotero = async (paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string): Promise<{ success: boolean; itemKey: string }> => {
+  return window.api.exportPaperToZotero(paperId, collectionKey, summaryHtml, analysisHtml)
 }

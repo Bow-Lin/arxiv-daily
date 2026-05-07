@@ -18,10 +18,16 @@ export interface ProxyConfig {
   https: string;
 }
 
+export interface ZoteroConfig {
+  api_key: string;
+  user_id: string;
+}
+
 export interface ConfigResponse {
   llm: LLMConfig;
   output: OutputConfig;
   proxy: ProxyConfig;
+  zotero?: ZoteroConfig;
 }
 
 export interface Category {
@@ -81,6 +87,24 @@ export function loadProxyConfig(db: SqlJsDatabase): ProxyConfig {
     const value = row[1] as string;
     if (key === 'proxy.http') config.http = value;
     if (key === 'proxy.https') config.https = value;
+  }
+  return config;
+}
+
+/**
+ * Load Zotero config from app_config table.
+ */
+export function loadZoteroConfig(db: SqlJsDatabase): ZoteroConfig {
+  const config: ZoteroConfig = { api_key: '', user_id: '' };
+
+  const rows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'zotero.%'");
+  if (rows.length === 0) return config;
+
+  for (const row of rows[0].values) {
+    const key = row[0] as string;
+    const value = row[1] as string;
+    if (key === 'zotero.api_key') config.api_key = value;
+    if (key === 'zotero.user_id') config.user_id = value;
   }
   return config;
 }
@@ -204,6 +228,7 @@ export function getConfig(db: SqlJsDatabase): ConfigResponse {
     http: '',
     https: '',
   };
+  const zoteroConfig = loadZoteroConfig(db);
 
   const configRows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'output.%' OR key LIKE 'proxy.%'");
   if (configRows.length > 0) {
@@ -227,13 +252,13 @@ export function getConfig(db: SqlJsDatabase): ConfigResponse {
     }
   }
 
-  return { llm: llmConfig, output: outputConfig, proxy: proxyConfig };
+  return { llm: llmConfig, output: outputConfig, proxy: proxyConfig, zotero: zoteroConfig };
 }
 
 /**
  * Update application config (LLM + output + proxy).
  */
-export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputConfig, proxy: ProxyConfig): void {
+export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputConfig, proxy: ProxyConfig, zotero?: ZoteroConfig): void {
   console.log(`update_config: model=${llm.model}, temperature=${llm.temperature}`);
 
   // Save LLM config
@@ -281,6 +306,20 @@ export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputCo
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     [proxy.https],
   );
+
+  // Save Zotero config
+  if (zotero) {
+    db.run(
+      `INSERT INTO app_config (key, value) VALUES ('zotero.api_key', ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [zotero.api_key],
+    );
+    db.run(
+      `INSERT INTO app_config (key, value) VALUES ('zotero.user_id', ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [zotero.user_id],
+    );
+  }
 }
 
 /**

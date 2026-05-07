@@ -13,6 +13,7 @@
       <CategoryEditor />
       <TopicEditor />
       <LLMSettings />
+      <ZoteroSettings />
 
       <div class="config-actions">
         <button class="btn-primary" @click="saveAll">保存设置</button>
@@ -52,6 +53,7 @@ import { useRouter } from 'vue-router'
 import TopicEditor from '../components/config/TopicEditor.vue'
 import CategoryEditor from '../components/config/CategoryEditor.vue'
 import LLMSettings from '../components/config/LLMSettings.vue'
+import ZoteroSettings from '../components/config/ZoteroSettings.vue'
 import { useConfigStore } from '../stores/config'
 import { usePapersStore } from '../stores/papers'
 import { clearData, clearAnalyses } from '../api'

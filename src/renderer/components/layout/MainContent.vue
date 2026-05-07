@@ -6,7 +6,7 @@
 
 <style scoped>
 .main-content {
-  flex: 0 1 600px;
+  flex: 0 1 480px;
   min-width: 300px;
   overflow: hidden;
   background: #ffffff;

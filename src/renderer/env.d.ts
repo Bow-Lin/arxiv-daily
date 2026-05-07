@@ -33,6 +33,14 @@ interface ElectronAPI {
   getPaperAnalysis: (id: string) => Promise<string | null>
   getUnanalyzedAnalysisPapers: () => Promise<{ id: string; title: string }[]>
   stopAnalysis: () => Promise<{ success: boolean }>
+  downloadPdf: (id: string) => Promise<any>
+  isPdfCached: (id: string) => Promise<boolean>
+  deletePdf: (id: string) => Promise<void>
+  deleteSummary: (id: string) => Promise<void>
+  deleteAnalysis: (id: string) => Promise<void>
+  onPdfDownloadProgress: (callback: (data: { paperId: string; loaded: number; total?: number }) => void) => () => void
+  listZoteroCollections: () => Promise<any>
+  exportPaperToZotero: (paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string) => Promise<{ success: boolean; itemKey: string }>
   openDirectory: () => Promise<string | undefined>
   onSummaryProgress: (callback: (data: any) => void) => () => void
   onAnalysisProgress: (callback: (data: any) => void) => () => void

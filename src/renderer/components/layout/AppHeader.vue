@@ -1,5 +1,5 @@
 <template>
-  <header class="app-header">
+  <header class="app-header" :class="{ 'no-titlebar-indent': !isMac }">
     <div class="header-left">
       <div class="logo-bg">
         <img src="/arxiv-logo.svg" class="logo-img" alt="arXiv" />
@@ -153,6 +153,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+
+const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
 import { fetchPapers, fetchPapersThisWeek, fetchPapersByDate, getUnanalyzedPaperIds, listCategories } from '../../api'
 import type { Category } from '../../types/config'
 import { usePapersStore } from '../../stores/papers'
@@ -394,6 +396,10 @@ const analyzePapersAction = async () => {
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.app-header.no-titlebar-indent {
+  padding-left: 24px;
 }
 
 .header-left {

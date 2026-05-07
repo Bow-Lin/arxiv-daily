@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, toRaw } from 'vue'
-import type { Topic, LLMConfig, OutputConfig, ProxyConfig, Category } from '../types/config'
+import type { Topic, LLMConfig, OutputConfig, ProxyConfig, ZoteroConfig, Category } from '../types/config'
 import {
   listTopics, saveTopic as apiSaveTopic, deleteTopic as apiDeleteTopic,
   getConfig, updateConfig,
@@ -23,6 +23,10 @@ export const useConfigStore = defineStore('config', () => {
   const proxyConfig = ref<ProxyConfig>({
     http: '',
     https: '',
+  })
+  const zoteroConfig = ref<ZoteroConfig>({
+    api_key: '',
+    user_id: '',
   })
 
   // Topics
@@ -70,14 +74,15 @@ export const useConfigStore = defineStore('config', () => {
   // Config
   const loadConfig = async () => {
     try {
-      const { llm, output, proxy } = await getConfig()
+      const { llm, output, proxy, zotero } = await getConfig()
       llmConfig.value = llm
       outputConfig.value = output
       if (proxy) proxyConfig.value = proxy
+      if (zotero) zoteroConfig.value = zotero
     } catch (err) { console.error('Failed to load config:', err) }
   }
   const saveAll = async () => {
-    await updateConfig({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), proxy: toRaw(proxyConfig.value) })
+    await updateConfig({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), proxy: toRaw(proxyConfig.value), zotero: toRaw(zoteroConfig.value) })
   }
 
   // Initialize
@@ -86,7 +91,7 @@ export const useConfigStore = defineStore('config', () => {
   loadConfig()
 
   return {
-    topics, categories, llmConfig, outputConfig, proxyConfig,
+    topics, categories, llmConfig, outputConfig, proxyConfig, zoteroConfig,
     loadTopics, addTopic, updateTopic, deleteTopic,
     loadCategories, addCategory, updateCategory, deleteCategory,
     loadConfig, saveAll,

@@ -9,6 +9,7 @@ const MIGRATIONS_DIR = join(__dirname, 'migrations');
 
 const MIGRATION_FILES = [
   { name: '001_initial', filename: '001_initial.sql' },
+  { name: '002_zotero_import', filename: '002_zotero_import.sql' },
 ];
 
 export class Database {

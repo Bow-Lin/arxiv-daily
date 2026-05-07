@@ -76,6 +76,15 @@ export function renderMarkdown(text: string): string {
   return sanitize(renderLatex(html))
 }
 
+/**
+ * Render Markdown to HTML only, without LaTeX or sanitization.
+ */
+export function renderMarkdownOnly(text: string): string {
+  if (!text) return ''
+  const preprocessed = preprocessCJK(text)
+  return marked.parse(preprocessed, { async: false }) as string
+}
+
 const CJK_RANGE = '\\u2e80-\\u9fff\\uf900-\\ufaff\\u3400-\\u4dbf\\u3000-\\u303f\\uff00-\\uffef'
 
 function preprocessCJK(text: string): string {

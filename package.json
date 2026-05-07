@@ -2,13 +2,13 @@
   "name": "arxiv-daily",
   "productName": "arXiv Daily",
   "private": true,
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Desktop app for fetching, filtering and analyzing arXiv papers",
   "author": "arXiv Daily Developer",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "vite",
-    "dev:electron": "tsc -p tsconfig.node.json && electron .",
+    "dev:electron": "tsc -p tsconfig.node.json && node -e \"const fs=require('fs');const p=require('path');fs.cpSync('src/main/database/migrations','dist/main/database/migrations',{recursive:true});\" && electron .",
     "build": "vue-tsc --noEmit -p tsconfig.web.json && vite build && tsc -b tsconfig.node.json && node -e \"const fs=require('fs');const p=require('path');fs.cpSync('src/main/database/migrations','dist/main/database/migrations',{recursive:true});fs.mkdirSync('dist/main/wasm',{recursive:true});fs.cpSync('node_modules/sql.js/dist/sql-wasm.wasm','dist/main/wasm/sql-wasm.wasm')\"",
     "package": "npm run build && electron-builder",
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json"
