@@ -57,8 +57,7 @@ import { useToastStore } from '../stores/toast'
 import { clearData, clearAnalyses } from '../api'
 
 const router = useRouter()
-const isMac = navigator.userAgentData?.platform === 'macOS'
-  || navigator.platform.toUpperCase().indexOf('MAC') >= 0
+const isMac = navigator.userAgentData.platform === 'macOS'
 const configStore = useConfigStore()
 const papersStore = usePapersStore()
 const toastStore = useToastStore()

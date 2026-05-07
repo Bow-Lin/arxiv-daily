@@ -1,5 +1,5 @@
 <template>
-  <header ref="headerRef" class="app-header" :class="{ 'no-titlebar-indent': !isMac }">
+  <header class="app-header" :class="{ 'no-titlebar-indent': !isMac }">
     <div class="header-center">
       <div class="search-bar">
         <Search :size="14" class="search-icon" />
@@ -20,10 +20,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { usePapersStore } from '../../stores/papers'
 
-const isMac = navigator.userAgentData?.platform === 'macOS'
-  || navigator.platform.toUpperCase().indexOf('MAC') >= 0
+const isMac = navigator.userAgentData.platform === 'macOS'
 const papersStore = usePapersStore()
-const headerRef = ref<HTMLElement | null>(null)
 const searchInput = ref<HTMLInputElement | null>(null)
 
 let debounceTimer: number | null = null
@@ -36,19 +34,7 @@ const onSearch = (e: Event) => {
   }, 300)
 }
 
-const onHeaderClick = (e: Event) => {
-  const target = e.target as HTMLElement
-  if (!target.closest('.header-center')) {
-    searchInput.value?.blur()
-  }
-}
-
-onMounted(() => {
-  headerRef.value?.addEventListener('click', onHeaderClick)
-})
-
 onUnmounted(() => {
-  headerRef.value?.removeEventListener('click', onHeaderClick)
   if (debounceTimer) clearTimeout(debounceTimer)
 })
 </script>
