@@ -16,11 +16,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { usePapersStore } from '../../stores/papers'
 
-const isMac = navigator.userAgentData.platform === 'macOS'
+const isMac = (navigator as any).userAgentData?.platform === 'macOS'
 const papersStore = usePapersStore()
 const searchInput = ref<HTMLInputElement | null>(null)
 
