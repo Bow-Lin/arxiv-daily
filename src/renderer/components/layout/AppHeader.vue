@@ -10,6 +10,9 @@
           :value="papersStore.searchQuery"
           @input="onSearch"
         />
+        <button v-if="papersStore.searchQuery" class="search-clear" @click="clearSearch">
+          <X :size="14" />
+        </button>
       </div>
     </div>
   </header>
@@ -17,7 +20,7 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
-import { Search } from 'lucide-vue-next'
+import { Search, X } from 'lucide-vue-next'
 import { usePapersStore } from '../../stores/papers'
 
 const isMac = (navigator as any).userAgentData?.platform === 'macOS'
@@ -32,6 +35,11 @@ const onSearch = (e: Event) => {
   debounceTimer = window.setTimeout(() => {
     papersStore.loadPapers({ search: value })
   }, 300)
+}
+
+const clearSearch = () => {
+  papersStore.loadPapers({ search: '' })
+  searchInput.value?.focus()
 }
 
 onUnmounted(() => {
@@ -66,6 +74,7 @@ onUnmounted(() => {
 
 .search-bar {
   width: 100%;
+  height: 32px;
   display: flex;
   align-items: center;
   background: #f9fafb;
@@ -77,6 +86,26 @@ onUnmounted(() => {
 .search-icon {
   flex-shrink: 0;
   margin-right: 6px;
+}
+
+.search-clear {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-right: -6px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.search-clear:hover {
+  color: #6b7280;
 }
 
 .search-bar input {
