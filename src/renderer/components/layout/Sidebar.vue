@@ -44,11 +44,11 @@
     <div class="sidebar-footer">
       <div class="footer-row">
         <button class="btn-icon" @click="goToConfig">
-          <Settings :size="16" />
+          <Settings :size="14" />
         </button>
         <button ref="queueBtnRef" class="btn-queue" @click="showQueuePanel = !showQueuePanel">
           <span class="queue-icon">
-            <ListChecks :size="16" />
+            <ListChecks :size="14" />
             <span v-if="queueTotalCount > 0" class="queue-badge">{{ queueTotalCount }}</span>
           </span>
         </button>
@@ -484,13 +484,14 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-footer {
-  padding: 12px;
+  padding: 6px 12px;
   border-top: 1px solid #e8e8e8;
 }
 
 .footer-row {
   display: flex;
   gap: 6px;
+  justify-content: space-between;
 }
 
 .btn-queue {
@@ -563,7 +564,7 @@ const analyzePapersAction = async () => {
 <style>
 .sidebar-queue-panel .queue-panel-outer {
   position: fixed;
-  bottom: 12px;
+  bottom: 6px;
   left: 252px;
   width: 360px;
   z-index: 301;
