@@ -7,6 +7,8 @@ export interface Toast {
   body: string
   type: 'success' | 'info' | 'error'
   removing: boolean
+  details?: string
+  duration?: number
 }
 
 let nextId = 0
@@ -14,10 +16,17 @@ let nextId = 0
 export const useToastStore = defineStore('toast', () => {
   const toasts = ref<Toast[]>([])
 
-  function show(title: string, body: string, type: 'success' | 'info' | 'error' = 'info') {
+  function show(
+    title: string,
+    body: string,
+    type: 'success' | 'info' | 'error' = 'info',
+    details?: string,
+    duration?: number,
+  ) {
     const id = nextId++
-    toasts.value.push({ id, title, body, type, removing: false })
-    setTimeout(() => remove(id), 3000)
+    const actualDuration = duration ?? (details ? 8000 : 3000)
+    toasts.value.push({ id, title, body, type, removing: false, details })
+    setTimeout(() => remove(id), actualDuration)
   }
 
   function remove(id: number) {

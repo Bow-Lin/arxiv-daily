@@ -6,10 +6,22 @@
         <div
           v-for="toast in toastStore.toasts"
           :key="toast.id"
-          :class="['toast-item', `toast-${toast.type}`, { 'toast-removing': toast.removing }]"
+          :class="['toast-item', `toast-${toast.type}`, { 'toast-removing': toast.removing, 'toast-expanded': expanded.has(toast.id) }]"
         >
-          <span class="toast-title">{{ toast.title }}</span>
-          <span class="toast-body">{{ toast.body }}</span>
+          <div class="toast-main">
+            <span class="toast-title">{{ toast.title }}</span>
+            <span class="toast-body">{{ toast.body }}</span>
+            <button
+              v-if="toast.details"
+              class="toast-toggle"
+              @click.stop="toggleExpand(toast.id)"
+            >
+              {{ expanded.has(toast.id) ? '收起' : '详情' }}
+            </button>
+          </div>
+          <div v-if="toast.details && expanded.has(toast.id)" class="toast-details">
+            {{ toast.details }}
+          </div>
         </div>
       </div>
     </Teleport>
@@ -17,9 +29,21 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useToastStore } from './stores/toast'
 
 const toastStore = useToastStore()
+const expanded = ref(new Set<number>())
+
+function toggleExpand(id: number) {
+  const next = new Set(expanded.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  expanded.value = next
+}
 </script>
 
 <style>
@@ -58,14 +82,21 @@ body {
   border-radius: 8px;
   font-size: 13px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   animation: toastIn 0.25s ease;
-  white-space: nowrap;
+  max-width: 420px;
+  pointer-events: auto;
 }
 
 .toast-item.toast-removing {
   animation: toastOut 0.25s ease forwards;
+}
+
+.toast-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .toast-title {
@@ -75,9 +106,46 @@ body {
 
 .toast-body {
   color: #6b7280;
-  max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast-toggle {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.toast-toggle:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.toast-error .toast-toggle {
+  color: #dc2626;
+}
+
+.toast-error .toast-toggle:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.toast-details {
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .toast-success {

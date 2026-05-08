@@ -248,7 +248,11 @@ async function doFetch(mode: 'today' | 'week') {
       }
 
       if (result.failed_categories.length > 0) {
-        toastStore.show('部分失败', `${result.failed_categories.length} 个类别获取失败`, 'error')
+        const summary = `${result.failed_categories.length} 个类别获取失败`
+        const details = result.failed_details
+          .map(d => `[${d.category}] ${d.error}`)
+          .join('\n')
+        toastStore.show('部分失败', summary, 'error', details)
       }
     }
   } catch (err: unknown) {
@@ -350,7 +354,11 @@ const fetchByDateAction = async () => {
 
       toastStore.show('获取完成', msg, 'success')
       if (result.failed_categories.length > 0) {
-        toastStore.show('部分失败', `${result.failed_categories.length} 个类别获取失败`, 'error')
+        const summary = `${result.failed_categories.length} 个类别获取失败`
+        const details = result.failed_details
+          .map(d => `[${d.category}] ${d.error}`)
+          .join('\n')
+        toastStore.show('部分失败', summary, 'error', details)
       }
       showDateDialog.value = false
     }
