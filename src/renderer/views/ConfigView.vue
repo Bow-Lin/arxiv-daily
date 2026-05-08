@@ -75,12 +75,12 @@ const configStore = useConfigStore()
 const papersStore = usePapersStore()
 const toastStore = useToastStore()
 const confirmClearData = ref(false)
-const themeOptions = [
+const themeOptions: { value: 'light' | 'dark' | 'system'; label: string }[] = [
   { value: 'light', label: '浅色' },
   { value: 'dark', label: '深色' },
   { value: 'system', label: '跟随系统' },
 ]
-const pendingTheme = ref(configStore.theme)
+const pendingTheme = ref<'light' | 'dark' | 'system'>(configStore.theme)
 const confirmClearAnalyses = ref(false)
 let confirmDataTimer: number | null = null
 let confirmAnalysesTimer: number | null = null

@@ -4,6 +4,14 @@ import { Database } from './database/connection';
 import { registerIpcHandlers } from './ipc-handlers';
 
 let mainWindow: BrowserWindow | null = null;
+let db: Database | null = null;
+
+app.on('before-quit', async () => {
+  if (db) {
+    await db.close();
+    db = null;
+  }
+});
 
 function createWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
@@ -23,7 +31,9 @@ function createWindow(): BrowserWindow {
 
   // Open external links in the default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+      shell.openExternal(url);
+    }
     return { action: 'deny' };
   });
 
@@ -69,7 +79,7 @@ app.whenReady().then(async () => {
     { role: 'windowMenu' as const },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
-  const db = new Database(join(app.getPath('userData'), 'arxiv_papers.db'));
+  db = new Database(join(app.getPath('userData'), 'arxiv_papers.db'));
   await db.init();
   registerIpcHandlers(db, createWindow());
 

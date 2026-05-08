@@ -124,13 +124,13 @@ const hasAnalysis = computed(() => !!(props.paper?.analysis && props.paper.analy
 
 watch(() => props.paper?.id, async () => {
   if (!props.paper) { isPdfCached.value = false; return }
-  try { isPdfCached.value = await (window as any).api.isPdfCached(props.paper.id) } catch { isPdfCached.value = false }
+  try { isPdfCached.value = await window.api.isPdfCached(props.paper.id) } catch { isPdfCached.value = false }
 }, { immediate: true })
 
 // Watch download store to update cached status when download completes
 watch(() => downloadStore.isRunning, async (running, wasRunning) => {
   if (wasRunning && !running && props.paper) {
-    try { isPdfCached.value = await (window as any).api.isPdfCached(props.paper.id) } catch { isPdfCached.value = false }
+    try { isPdfCached.value = await window.api.isPdfCached(props.paper.id) } catch { isPdfCached.value = false }
   }
 })
 
@@ -195,7 +195,7 @@ const doDeletePdf = async () => {
   if (!props.paper || !isPdfCached.value) return
   showMoreMenu.value = false
   try {
-    await (window as any).api.deletePdf(props.paper.id)
+    await window.api.deletePdf(props.paper.id)
     isPdfCached.value = false
     toastStore.show('已删除', 'PDF 已删除', 'success')
   } catch (err) {
@@ -207,7 +207,7 @@ const doDeleteSummary = async () => {
   if (!props.paper || !hasSummary.value) return
   showMoreMenu.value = false
   try {
-    await (window as any).api.deleteSummary(props.paper.id)
+    await window.api.deleteSummary(props.paper.id)
     papersStore.selectPaper(props.paper.id)
     toastStore.show('已删除', '论文总结已删除', 'success')
   } catch (err) {
@@ -219,7 +219,7 @@ const doDeleteAnalysis = async () => {
   if (!props.paper || !hasAnalysis.value) return
   showMoreMenu.value = false
   try {
-    await (window as any).api.deleteAnalysis(props.paper.id)
+    await window.api.deleteAnalysis(props.paper.id)
     papersStore.selectPaper(props.paper.id)
     toastStore.show('已删除', '论文分析已删除', 'success')
   } catch (err) {

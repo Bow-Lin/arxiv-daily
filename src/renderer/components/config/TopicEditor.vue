@@ -70,17 +70,13 @@ const startEdit = (topic: Topic) => {
   keywordsInput.value = topic.keywords.join(', ')
 }
 
-const saveEdit = async (id: number) => {
+const saveEdit = (id: number) => {
   if (!editForm.value.name.trim()) return
-  try {
-    await configStore.updateTopic(id, {
-      name: editForm.value.name,
-      keywords: keywordsInput.value.split(',').map(k => k.trim()).filter(Boolean),
-    })
-    editingId.value = null
-  } catch (err) {
-    console.error('Failed to update topic:', err)
-  }
+  configStore.updateTopic(id, {
+    name: editForm.value.name,
+    keywords: keywordsInput.value.split(',').map(k => k.trim()).filter(Boolean),
+  })
+  editingId.value = null
 }
 
 const cancelEdit = () => {
@@ -93,30 +89,22 @@ const startAdd = () => {
   newKeywords.value = ''
 }
 
-const saveNew = async () => {
+const saveNew = () => {
   if (!newTopic.value.name.trim()) return
-  try {
-    await configStore.addTopic({
-      name: newTopic.value.name,
-      keywords: newKeywords.value.split(',').map(k => k.trim()).filter(Boolean),
-      enabled: true,
-    })
-    isAdding.value = false
-  } catch (err) {
-    console.error('Failed to add topic:', err)
-  }
+  configStore.addTopic({
+    name: newTopic.value.name,
+    keywords: newKeywords.value.split(',').map(k => k.trim()).filter(Boolean),
+    enabled: true,
+  })
+  isAdding.value = false
 }
 
 const cancelAdd = () => {
   isAdding.value = false
 }
 
-const deleteTopic = async (id: number) => {
-  try {
-    await configStore.deleteTopic(id)
-  } catch (err) {
-    console.error('Failed to delete topic:', err)
-  }
+const deleteTopic = (id: number) => {
+  configStore.deleteTopic(id)
 }
 </script>
 

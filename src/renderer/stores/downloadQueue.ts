@@ -61,11 +61,11 @@ export const useDownloadQueueStore = defineStore('downloadQueue', () => {
     if (completed) return completed
 
     // Check if already cached
-    const cached = await (window as any).api.isPdfCached(paperId)
+    const cached = await window.api.isPdfCached(paperId)
     if (cached) return paperId
 
     // Register as waiter
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<string>((resolve) => {
       if (!waiters.has(paperId)) {
         waiters.set(paperId, [])
       }
@@ -113,7 +113,7 @@ export const useDownloadQueueStore = defineStore('downloadQueue', () => {
         currentPaperTitle.value = item.title
         currentProgress.value = 0
 
-        const offProgress = (window as any).api.onPdfDownloadProgress((data: { paperId: string; loaded: number; total?: number }) => {
+        const offProgress = window.api.onPdfDownloadProgress((data: { paperId: string; loaded: number; total?: number }) => {
           if (data.paperId !== item.id) return
           if (data.total) {
             currentProgress.value = Math.round((data.loaded / data.total) * 100)
@@ -123,7 +123,7 @@ export const useDownloadQueueStore = defineStore('downloadQueue', () => {
         })
 
         try {
-          await (window as any).api.downloadPdf(item.id)
+          await window.api.downloadPdf(item.id)
           currentProgress.value = 100
           resolveWaiters(item.id, item.id)
         } catch (err) {

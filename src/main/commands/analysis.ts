@@ -144,6 +144,9 @@ export async function summarizeAllUnanalyzed(db: SqlJsDatabase, mainWindow: Brow
          AND p.relevance_topics IS NOT NULL AND p.relevance_topics != 'null'
        ORDER BY p.published_date DESC`,
     );
+    if (paperResults.length === 0) {
+      return { success: true, analyzed: 0, message: 'No unanalyzed papers found' };
+    }
     const papers = paperResults[0].values.map(row => ({
       id: row[0] as string,
       title: row[1] as string,

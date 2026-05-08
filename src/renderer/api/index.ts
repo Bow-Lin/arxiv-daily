@@ -149,7 +149,7 @@ export const summarizePaper = async (paperId: string, skipIfAnalyzed = true): Pr
   return window.api.summarizePaper(paperId, skipIfAnalyzed)
 }
 
-export const summarizeAllUnanalyzed = async (): Promise<{ success: boolean; analyzed: number; errors: number; stopped?: boolean }> => {
+export const summarizeAllUnanalyzed = async (): Promise<{ success: boolean; analyzed?: number; errors?: number; stopped?: boolean; message?: string }> => {
   return window.api.summarizeAllUnanalyzed()
 }
 

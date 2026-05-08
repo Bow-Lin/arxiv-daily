@@ -4,7 +4,7 @@
 
     <div class="form-row">
       <label>User ID</label>
-      <input v-model="configStore.zoteroConfig.user_id" placeholder="数字 ID" @change="save" />
+      <input v-model="configStore.zoteroConfig.user_id" placeholder="数字 ID" />
     </div>
 
     <div class="form-row">
@@ -14,7 +14,6 @@
           v-model="configStore.zoteroConfig.api_key"
           :type="showApiKey ? 'text' : 'password'"
           placeholder="Zotero API Key"
-          @change="save"
         />
         <button class="toggle-visibility" @click="showApiKey = !showApiKey">
           <Eye v-if="!showApiKey" :size="16" />
@@ -32,14 +31,6 @@ import { useConfigStore } from '../../stores/config'
 
 const configStore = useConfigStore()
 const showApiKey = ref(false)
-
-const save = async () => {
-  try {
-    await configStore.saveAll()
-  } catch (err) {
-    console.error('Failed to save Zotero config:', err)
-  }
-}
 </script>
 
 <style scoped>

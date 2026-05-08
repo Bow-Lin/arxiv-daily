@@ -17,7 +17,6 @@
   /* 语义色 */
   --color-primary: #2563eb;
   --color-primary-hover: #1d4ed8;
-  --color-primary-dim: #2563eb;
   --color-primary-bg: #f3f4f6;
   --color-primary-border: #bfdbfe;
 
@@ -47,13 +46,10 @@
   --panel-list-bg: #ffffff;
   --card-border: #f0f0f0;
   --card-hover: #f9fafb;
-  --hover-expand: rgba(255, 255, 255, 0.95);
   --tag-active-text: #2563eb;
   --tag-bg: transparent;
   --tag-active-bg: #f3f4f6;
   --category-bg: #f3f4f6;
-  --input-caret: #1a1a1a;
-  --input-text: #1a1a1a;
   --card-selected: #eff6ff;
   --card-selected-text: #374151;
   --nav-active: #dbeafe;
@@ -63,7 +59,6 @@
   --shadow-sm: rgba(0, 0, 0, 0.06);
   --shadow-md: rgba(0, 0, 0, 0.1);
   --shadow-lg: rgba(0, 0, 0, 0.15);
-  --overlay: rgba(0, 0, 0, 0.3);
 }
 
 [data-theme="dark"] {
@@ -82,7 +77,6 @@
 
   --color-primary: #3b82f6;
   --color-primary-hover: #60a5fa;
-  --color-primary-dim: #3b82f6;
   --color-primary-bg: #1a2a3a;
   --color-primary-border: #2a3a4a;
 
@@ -111,13 +105,10 @@
   --panel-list-bg: #3a3a3a;
   --card-border: #333333;
   --card-hover: #333333;
-  --hover-expand: rgba(0, 0, 0, 0.6);
   --tag-active-text: #cccccc;
   --tag-bg: transparent;
   --tag-active-bg: #3a3a3a;
   --category-bg: #4a4a4a;
-  --input-caret: #f0f0f0;
-  --input-text: #f0f0f0;
   --card-selected: #2a6adb;
   --card-selected-text: #b0b0b0;
   --nav-active: #2a6adb;
@@ -126,5 +117,4 @@
   --shadow-sm: rgba(0, 0, 0, 0.2);
   --shadow-md: rgba(0, 0, 0, 0.3);
   --shadow-lg: rgba(0, 0, 0, 0.4);
-  --overlay: rgba(0, 0, 0, 0.6);
 }

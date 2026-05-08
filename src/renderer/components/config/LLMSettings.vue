@@ -5,7 +5,7 @@
     <div class="form-row">
       <label>API Key</label>
       <div class="input-wrapper">
-        <input v-model="configStore.llmConfig.api_key" :type="showApiKey ? 'text' : 'password'" placeholder="sk-..." @change="save" class="input-icon-right" />
+        <input v-model="configStore.llmConfig.api_key" :type="showApiKey ? 'text' : 'password'" placeholder="sk-..." class="input-icon-right" />
         <button class="toggle-visibility" @click="showApiKey = !showApiKey">
           <Eye v-if="!showApiKey" :size="16" />
           <EyeOff v-else :size="16" />
@@ -15,17 +15,17 @@
 
     <div class="form-row">
       <label>Base URL</label>
-      <input v-model="configStore.llmConfig.base_url" placeholder="https://api.openai.com/v1" @change="save" />
+      <input v-model="configStore.llmConfig.base_url" placeholder="https://api.openai.com/v1" />
     </div>
 
     <div class="form-row">
       <label>Model</label>
-      <input v-model="configStore.llmConfig.model" placeholder="gpt-4o" @change="save" />
+      <input v-model="configStore.llmConfig.model" placeholder="gpt-4o" />
     </div>
 
     <div class="form-row">
       <label>Temperature</label>
-      <input v-model.number="configStore.llmConfig.temperature" type="number" min="0" max="2" step="0.1" @change="save" />
+      <input v-model.number="configStore.llmConfig.temperature" type="number" min="0" max="2" step="0.1" />
     </div>
 
     <div class="test-row">
@@ -50,19 +50,11 @@ const showApiKey = ref(false)
 const testing = ref(false)
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 
-const save = async () => {
-  try {
-    await configStore.saveAll()
-  } catch (err) {
-    console.error('Failed to save LLM config:', err)
-  }
-}
-
 const testConnection = async () => {
   testing.value = true
   testResult.value = null
   try {
-    await configStore.saveAll()
+    await configStore.saveLLM()
     const result = await testLLMConnection()
     testResult.value = { success: result.success, message: result.message || '连接成功' }
   } catch (err: unknown) {

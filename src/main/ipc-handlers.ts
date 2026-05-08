@@ -1,4 +1,5 @@
 import { ipcMain, dialog, app, shell } from 'electron';
+import * as fs from 'fs/promises';
 import type { BrowserWindow } from 'electron';
 import type { Database } from './database/connection';
 import * as paperCmd from './commands/paper';
@@ -10,73 +11,70 @@ import { ensurePdfDownloaded, getPdfPath } from './services/pdf-extractor';
 import { fetchCollections, createItem, createChildItems, type ChildItemPayload } from './services/zotero-client';
 import { loadZoteroConfig } from './commands/config';
 
+function handle(channel: string, fn: (...args: any[]) => Promise<any>) {
+  ipcMain.handle(channel, async (event, ...args) => {
+    try {
+      return await fn(...args);
+    } catch (err) {
+      console.error(`[IPC] ${channel} error:`, err);
+      throw err;
+    }
+  });
+}
+
 export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): void {
   const sqlDb = db.getDb();
 
   // Paper (read-only)
-  ipcMain.handle('list-papers', async (_event, params) => {
-    return paperCmd.listPapers(sqlDb, params);
-  });
-  ipcMain.handle('get-paper-detail', async (_event, paperId) => {
-    return paperCmd.getPaperDetail(sqlDb, paperId);
-  });
-  ipcMain.handle('list-fetch-dates', async () => {
-    return paperCmd.listFetchDates(sqlDb);
-  });
-  ipcMain.handle('list-topic-counts', async () => {
-    return paperCmd.listTopicCounts(sqlDb);
-  });
+  handle('list-papers', async (_event, params) => paperCmd.listPapers(sqlDb, params));
+  handle('get-paper-detail', async (_event, paperId) => paperCmd.getPaperDetail(sqlDb, paperId));
+  handle('list-fetch-dates', async () => paperCmd.listFetchDates(sqlDb));
+  handle('list-topic-counts', async () => paperCmd.listTopicCounts(sqlDb));
 
   // Config
-  ipcMain.handle('list-topics', async () => {
-    return configCmd.listTopics(sqlDb);
-  });
-  ipcMain.handle('save-topic', async (_event, topic) => {
+  handle('list-topics', async () => configCmd.listTopics(sqlDb));
+  handle('save-topic', async (_event, topic) => {
     const result = configCmd.saveTopic(sqlDb, topic);
     await db.save();
     return result;
   });
-  ipcMain.handle('delete-topic', async (_event, topicId) => {
+  handle('delete-topic', async (_event, topicId) => {
     configCmd.deleteTopic(sqlDb, topicId);
     await db.save();
   });
-  ipcMain.handle('get-config', async () => {
-    return configCmd.getConfig(sqlDb);
-  });
-  ipcMain.handle('update-config', async (_event, config) => {
+  handle('get-config', async () => configCmd.getConfig(sqlDb));
+  handle('update-config', async (_event, config) => {
     configCmd.updateConfig(sqlDb, config.llm, config.output, config.zotero, config.theme);
     await db.save();
   });
-  ipcMain.handle('list-categories', async () => {
-    return configCmd.listCategories(sqlDb);
-  });
-  ipcMain.handle('save-category', async (_event, category) => {
+  handle('list-categories', async () => configCmd.listCategories(sqlDb));
+  handle('save-category', async (_event, category) => {
     const result = configCmd.saveCategory(sqlDb, category);
     await db.save();
     return result;
   });
-  ipcMain.handle('delete-category', async (_event, categoryId) => {
+  handle('delete-category', async (_event, categoryId) => {
     configCmd.deleteCategory(sqlDb, categoryId);
     await db.save();
   });
-  ipcMain.handle('clear-data', async () => {
+  handle('clear-data', async () => {
     const result = configCmd.clearData(sqlDb);
     await db.save();
     return result;
   });
-  ipcMain.handle('clear-analyses', async () => {
+  handle('clear-analyses', async () => {
     const result = configCmd.clearAnalyses(sqlDb);
     await db.save();
     return result;
   });
 
   // Fetch
-  ipcMain.handle('fetch-papers', async (_event, categories) => {
+  handle('fetch-papers', async (_event, categories) => {
     const result = await fetchCmd.fetchPapers(sqlDb, categories || []);
     await db.save();
     return result;
   });
-  ipcMain.handle('fetch-papers-this-week', async (_event, categories) => {
+  handle('fetch-papers-this-week', async (_event, categories) => {
     const result = await fetchCmd.fetchPapersThisWeek(sqlDb, categories || []);
     await db.save();
     return result;
@@ -118,24 +116,18 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
       summaryCmd.setSummaryAbortController(null);
     }
   });
-  ipcMain.handle('summarize-all-unanalyzed', async () => {
+  handle('summarize-all-unanalyzed', async () => {
     const result = await summaryCmd.summarizeAllUnanalyzed(sqlDb, mainWindow, async () => {
       await db.save();
     });
     return result;
   });
-  ipcMain.handle('stop-summary', async () => {
-    return summaryCmd.stopSummary();
-  });
-  ipcMain.handle('get-unanalyzed-paper-ids', async () => {
-    return summaryCmd.getUnanalyzedPapers(sqlDb);
-  });
-  ipcMain.handle('test-llm-connection', async () => {
-    return summaryCmd.testLLMConnection(sqlDb);
-  });
+  handle('stop-summary', async () => summaryCmd.stopSummary());
+  handle('get-unanalyzed-paper-ids', async () => summaryCmd.getUnanalyzedPapers(sqlDb));
+  handle('test-llm-connection', async () => summaryCmd.testLLMConnection(sqlDb));
 
   // PDF download
-  ipcMain.handle('download-pdf', async (_event, paperId) => {
+  handle('download-pdf', async (_event, paperId) => {
     const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
     if (results.length === 0 || results[0].values.length === 0) {
       throw new Error(`Paper ${paperId} not found`);
@@ -150,7 +142,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     return filePath;
   });
 
-  ipcMain.handle('open-pdf', async (_event, paperId) => {
+  handle('open-pdf', async (_event, paperId) => {
     const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
     if (results.length === 0 || results[0].values.length === 0) return;
     const pdfUrl = results[0].values[0][0] as string;
@@ -159,37 +151,37 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     await shell.openPath(localPath);
   });
 
-  ipcMain.handle('is-pdf-cached', async (_event, paperId) => {
+  handle('is-pdf-cached', async (_event, paperId) => {
     const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
     if (results.length === 0 || results[0].values.length === 0) return false;
     const pdfUrl = results[0].values[0][0] as string;
     if (!pdfUrl) return false;
     const localPath = getPdfPath(app.getPath('userData'), pdfUrl);
     try {
-      await require('fs/promises').access(localPath);
+      await fs.access(localPath);
       return true;
     } catch {
       return false;
     }
   });
 
-  ipcMain.handle('delete-pdf', async (_event, paperId) => {
+  handle('delete-pdf', async (_event, paperId) => {
     const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
     if (results.length === 0 || results[0].values.length === 0) return;
     const pdfUrl = results[0].values[0][0] as string;
     if (!pdfUrl) return;
     const localPath = getPdfPath(app.getPath('userData'), pdfUrl);
     try {
-      await require('fs/promises').unlink(localPath);
+      await fs.unlink(localPath);
     } catch { /* ignore */ }
   });
 
-  ipcMain.handle('delete-summary', async (_event, paperId) => {
+  handle('delete-summary', async (_event, paperId) => {
     sqlDb.exec('UPDATE analyses SET summary = \'\' WHERE paper_id = ?', [paperId]);
     await db.save();
   });
 
-  ipcMain.handle('delete-analysis', async (_event, paperId) => {
+  handle('delete-analysis', async (_event, paperId) => {
     sqlDb.exec('UPDATE analyses SET analysis = \'\' WHERE paper_id = ?', [paperId]);
     await db.save();
   });
@@ -214,18 +206,12 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
       summaryCmd.setAnalysisAbortController(null);
     }
   });
-  ipcMain.handle('get-paper-analysis', async (_event, paperId) => {
-    return analysisCmd.getPaperAnalysis(sqlDb, paperId);
-  });
-  ipcMain.handle('get-unanalyzed-analysis-papers', async () => {
-    return analysisCmd.getUnanalyzedPapers(sqlDb);
-  });
-  ipcMain.handle('stop-analysis', async () => {
-    return summaryCmd.stopAnalysis();
-  });
+  handle('get-paper-analysis', async (_event, paperId) => analysisCmd.getPaperAnalysis(sqlDb, paperId));
+  handle('get-unanalyzed-analysis-papers', async () => analysisCmd.getUnanalyzedPapers(sqlDb));
+  handle('stop-analysis', async () => summaryCmd.stopAnalysis());
 
   // Zotero
-  ipcMain.handle('list-zotero-collections', async () => {
+  handle('list-zotero-collections', async () => {
     const config = loadZoteroConfig(sqlDb);
     if (!config.api_key || !config.user_id) {
       throw new Error('Zotero API Key 和 User ID 未配置');
@@ -233,7 +219,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     return fetchCollections(config.user_id, config.api_key);
   });
 
-  ipcMain.handle('export-paper-to-zotero', async (_event, paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string) => {
+  handle('export-paper-to-zotero', async (_event, paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string) => {
     const config = loadZoteroConfig(sqlDb);
     if (!config.api_key || !config.user_id) {
       throw new Error('Zotero API Key 和 User ID 未配置');
@@ -289,7 +275,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     if (pdfUrl) {
       const localPath = getPdfPath(app.getPath('userData'), pdfUrl);
       try {
-        await require('fs/promises').access(localPath);
+        await fs.access(localPath);
         children.push({
           itemType: 'attachment',
           parentItem: itemKey,
@@ -324,14 +310,13 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     // 3. Create all child items
     if (children.length > 0) {
       await createChildItems(config.user_id, config.api_key, children);
-    } else {
     }
 
     return { success: true, itemKey };
   });
 
   // Dialog
-  ipcMain.handle('open-directory', async () => {
+  handle('open-directory', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
     });

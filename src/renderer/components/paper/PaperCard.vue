@@ -66,6 +66,10 @@ const formatAuthors = (authors: string[]) => {
   color: var(--card-selected-text);
 }
 
+.paper-card.selected .status-indicator.analyzed {
+  color: var(--badge-success);
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;

@@ -503,14 +503,6 @@ const analyzePapersAction = async () => {
   cursor: not-allowed;
 }
 
-.btn-analyze {
-  color: var(--color-success);
-}
-
-.btn-analyze:hover:not(:disabled) {
-  background: var(--border-primary);
-}
-
 .dates-section {
   flex: 1;
   min-height: 0;
