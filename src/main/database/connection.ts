@@ -79,6 +79,7 @@ export class Database {
 
   private runSchemaUpdates(): void {
     if (!this.db) throw new Error('Database not initialized');
+    this.db.run("DELETE FROM app_config WHERE key LIKE 'proxy.%'");
     const cols = this.db.exec("PRAGMA table_info(papers)");
     if (cols.length > 0) {
       const colNames = cols[0].values.map(r => r[1] as string);

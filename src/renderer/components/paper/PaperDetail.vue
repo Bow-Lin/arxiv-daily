@@ -12,8 +12,8 @@
 
       <div class="detail-actions">
         <a :href="paper.url" target="_blank" rel="noopener noreferrer" class="action-link action-pdf">打开 arXiv</a>
-        <button class="action-link action-pdf" :disabled="isDownloadingPdf" @click="downloadPdf">
-          {{ isDownloadingPdf ? `下载中 ${downloadProgress}%` : isPdfCached ? '打开 PDF' : '下载 PDF' }}
+        <button class="action-link action-pdf" :disabled="isPdfDownloading || isPdfQueued" @click="downloadPdf">
+          {{ pdfButtonText }}
         </button>
         <button class="action-link action-analyze" :disabled="isInQueue" @click="addToQueue">
           {{ isCurrentPaper ? '总结中...' : isInQueue ? '排队中...' : '论文总结' }}
@@ -91,11 +91,12 @@ import type { PaperWithAnalysis } from '../../types/paper'
 import { isAnalyzed as checkAnalyzed } from '../../types/paper'
 import { useSummaryQueueStore } from '../../stores/analysisQueue'
 import { useAnalysisQueueStore } from '../../stores/paperAnalysisQueue'
+import { useDownloadQueueStore } from '../../stores/downloadQueue'
 import { useToastStore } from '../../stores/toast'
 import { usePapersStore } from '../../stores/papers'
 import { renderLatex, renderMarkdown, renderMarkdownOnly } from '../../utils/katex'
 import { formatDateFull, extractErrorMessage } from '../../utils/format'
-import { listZoteroCollections, exportPaperToZotero } from '../../api'
+import { listZoteroCollections, exportPaperToZotero, openPdf } from '../../api'
 import type { ZoteroCollection } from '../../api'
 import 'katex/dist/katex.min.css'
 
@@ -105,13 +106,12 @@ const props = defineProps<{
 
 const queueStore = useSummaryQueueStore()
 const analysisQueueStore = useAnalysisQueueStore()
+const downloadStore = useDownloadQueueStore()
 const toastStore = useToastStore()
 const papersStore = usePapersStore()
 
 const activeTab = ref<'abstract' | 'summary' | 'analysis'>('abstract')
-const isDownloadingPdf = ref(false)
 const isPdfCached = ref(false)
-const downloadProgress = ref(0)
 const showZoteroMenu = ref(false)
 const collections = ref<ZoteroCollection[]>([])
 const zoteroError = ref('')
@@ -127,16 +127,11 @@ watch(() => props.paper?.id, async () => {
   try { isPdfCached.value = await (window as any).api.isPdfCached(props.paper.id) } catch { isPdfCached.value = false }
 }, { immediate: true })
 
-onMounted(() => {
-  const cleanup = (window as any).api.onPdfDownloadProgress((data: { paperId: string; loaded: number; total?: number }) => {
-    if (data.paperId !== props.paper?.id) return
-    if (data.total) {
-      downloadProgress.value = Math.round((data.loaded / data.total) * 100)
-    } else {
-      downloadProgress.value = Math.min(99, Math.round(data.loaded / 1024 / 10))
-    }
-  })
-  onUnmounted(cleanup)
+// Watch download store to update cached status when download completes
+watch(() => downloadStore.isRunning, async (running, wasRunning) => {
+  if (wasRunning && !running && props.paper) {
+    try { isPdfCached.value = await (window as any).api.isPdfCached(props.paper.id) } catch { isPdfCached.value = false }
+  }
 })
 
 const isCurrentPaper = computed(() => {
@@ -177,18 +172,22 @@ const addToAnalysisQueue = () => {
   analysisQueueStore.enqueue([{ id: props.paper.id, title: props.paper.title }])
 }
 
-const downloadPdf = async () => {
-  if (!props.paper || isDownloadingPdf.value) return
-  isDownloadingPdf.value = true
-  downloadProgress.value = 0
-  try {
-    await (window as any).api.downloadPdf(props.paper.id)
-    isPdfCached.value = true
-  } catch (err) {
-    console.error('Failed to download PDF:', err)
-  } finally {
-    isDownloadingPdf.value = false
-    downloadProgress.value = 0
+const isPdfDownloading = computed(() => props.paper ? downloadStore.currentPaperId === props.paper.id : false)
+const isPdfQueued = computed(() => props.paper ? downloadStore.isInQueue(props.paper.id) : false)
+
+const pdfButtonText = computed(() => {
+  if (isPdfCached.value) return '打开 PDF'
+  if (isPdfDownloading.value) return '下载中'
+  if (isPdfQueued.value) return '排队中'
+  return '下载 PDF'
+})
+
+const downloadPdf = () => {
+  if (!props.paper) return
+  if (isPdfCached.value) {
+    openPdf(props.paper.id)
+  } else {
+    downloadStore.enqueue([{ id: props.paper.id, title: props.paper.title }])
   }
 }
 
@@ -372,6 +371,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
 .action-analyze:hover:not(:disabled) {
   background: var(--color-success-bg);
+  border-color: var(--color-success);
 }
 
 .action-deep {
@@ -451,6 +451,11 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
   min-width: auto;
   border: 1px solid var(--border-primary);
   height: 30px;
+}
+
+.action-more:hover:not(:disabled) {
+  background: var(--bg-secondary);
+  border-color: var(--border-secondary);
 }
 
 /* Tabs */

@@ -7,7 +7,6 @@ import * as fetchCmd from './commands/fetch';
 import * as summaryCmd from './commands/analysis';
 import * as analysisCmd from './services/paper-analyzer';
 import { ensurePdfDownloaded, getPdfPath } from './services/pdf-extractor';
-import { loadProxyConfig } from './commands/config';
 import { fetchCollections, createItem, createChildItems, type ChildItemPayload } from './services/zotero-client';
 import { loadZoteroConfig } from './commands/config';
 
@@ -45,7 +44,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     return configCmd.getConfig(sqlDb);
   });
   ipcMain.handle('update-config', async (_event, config) => {
-    configCmd.updateConfig(sqlDb, config.llm, config.output, config.proxy, config.zotero, config.theme);
+    configCmd.updateConfig(sqlDb, config.llm, config.output, config.zotero, config.theme);
     await db.save();
   });
   ipcMain.handle('list-categories', async () => {
@@ -145,12 +144,19 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     if (!pdfUrl) {
       throw new Error(`Paper ${paperId} has no PDF URL`);
     }
-    const proxyConfig = loadProxyConfig(sqlDb);
-    const filePath = await ensurePdfDownloaded(pdfUrl, undefined, app.getPath('userData'), proxyConfig, (loaded, total) => {
+    const filePath = await ensurePdfDownloaded(pdfUrl, undefined, app.getPath('userData'), (loaded, total) => {
       mainWindow.webContents.send('pdf-download-progress', { paperId, loaded, total });
     });
-    await shell.openPath(filePath);
     return filePath;
+  });
+
+  ipcMain.handle('open-pdf', async (_event, paperId) => {
+    const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
+    if (results.length === 0 || results[0].values.length === 0) return;
+    const pdfUrl = results[0].values[0][0] as string;
+    if (!pdfUrl) return;
+    const localPath = getPdfPath(app.getPath('userData'), pdfUrl);
+    await shell.openPath(localPath);
   });
 
   ipcMain.handle('is-pdf-cached', async (_event, paperId) => {

@@ -2,7 +2,7 @@ import type { Database as SqlJsDatabase } from 'sql.js';
 import type { DeepAnalysisResult } from './llm-client';
 import { LLMClient } from './llm-client';
 import { extractTextFromUrl } from './pdf-extractor';
-import { loadLLMConfig, loadProxyConfig } from '../commands/config';
+import { loadLLMConfig } from '../commands/config';
 
 export type ProgressCallback = (phase: string) => void;
 
@@ -24,8 +24,7 @@ export async function analyzeFullPaper(
     throw new Error(`Paper ${paperId} has no PDF URL`);
   }
 
-  const proxyConfig = loadProxyConfig(db);
-  const fullText = await extractTextFromUrl(pdfUrl, signal, dataDir, proxyConfig, onProgress);
+  const fullText = await extractTextFromUrl(pdfUrl, signal, dataDir, onProgress);
 
   if (!fullText.trim()) {
     throw new Error('Failed to extract text from PDF');

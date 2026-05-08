@@ -1,6 +1,6 @@
 import type { Database as SqlJsDatabase } from 'sql.js';
 import { fetchFromApi, savePapers, todayStr, daysAgoStr } from '../services/arxiv-api';
-import { refreshAllPaperTopics, loadProxyConfig } from './config';
+import { refreshAllPaperTopics } from './config';
 
 export interface FailedCategory {
   category: string;
@@ -43,11 +43,10 @@ async function fetchPapersInRange(
   const failed: string[] = [];
   const failedDetails: FailedCategory[] = [];
   const allApiIds = new Set<string>();
-  const proxyConfig = loadProxyConfig(db);
 
   for (const category of categories) {
     try {
-      const papers = await fetchFromApi(category, startDate, endDate, proxyConfig);
+      const papers = await fetchFromApi(category, startDate, endDate);
       for (const p of papers) {
         allApiIds.add(p.arxiv_id);
       }

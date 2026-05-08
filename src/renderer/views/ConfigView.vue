@@ -27,7 +27,6 @@
       <TopicEditor />
       <LLMSettings />
       <ZoteroSettings />
-      <NetworkSettings />
 
       <div class="config-actions">
         <button class="btn-primary" @click="saveAll">保存设置</button>
@@ -64,7 +63,6 @@ import { ChevronLeft } from 'lucide-vue-next'
 import TopicEditor from '../components/config/TopicEditor.vue'
 import CategoryEditor from '../components/config/CategoryEditor.vue'
 import LLMSettings from '../components/config/LLMSettings.vue'
-import NetworkSettings from '../components/config/NetworkSettings.vue'
 import ZoteroSettings from '../components/config/ZoteroSettings.vue'
 import { useConfigStore } from '../stores/config'
 import { usePapersStore } from '../stores/papers'

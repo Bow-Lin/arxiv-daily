@@ -33,6 +33,7 @@ const api = {
 
   // PDF download
   downloadPdf: (id: string) => ipcRenderer.invoke('download-pdf', id),
+  openPdf: (id: string) => ipcRenderer.invoke('open-pdf', id),
   isPdfCached: (id: string) => ipcRenderer.invoke('is-pdf-cached', id),
   deletePdf: (id: string) => ipcRenderer.invoke('delete-pdf', id),
   deleteSummary: (id: string) => ipcRenderer.invoke('delete-summary', id),

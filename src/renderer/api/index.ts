@@ -1,5 +1,5 @@
 import type { PaperWithAnalysis } from '../types/paper'
-import type { Topic, LLMConfig, OutputConfig, ProxyConfig, ZoteroConfig, Category } from '../types/config'
+import type { Topic, LLMConfig, OutputConfig, ZoteroConfig, Category } from '../types/config'
 
 export interface PaginatedResult<T> {
   items: T[]
@@ -53,14 +53,13 @@ export const deleteTopic = async (topicId: number): Promise<void> => {
   return window.api.deleteTopic(topicId)
 }
 
-export const getConfig = async (): Promise<{ llm: LLMConfig; output: OutputConfig; proxy: ProxyConfig; zotero?: ZoteroConfig; theme?: string }> => {
+export const getConfig = async (): Promise<{ llm: LLMConfig; output: OutputConfig; zotero?: ZoteroConfig; theme?: string }> => {
   return window.api.getConfig()
 }
 
 export const updateConfig = async (config: {
   llm: LLMConfig
   output: OutputConfig
-  proxy: ProxyConfig
   zotero?: ZoteroConfig
   theme?: string
 }): Promise<void> => {
@@ -111,6 +110,10 @@ export interface FetchPapersResult {
   existing_count: number
   failed_categories: string[]
   failed_details: FailedCategory[]
+}
+
+export const openPdf = async (paperId: string): Promise<void> => {
+  return window.api.openPdf(paperId)
 }
 
 export const fetchPapers = async (categories?: string[]): Promise<FetchPapersResult> => {

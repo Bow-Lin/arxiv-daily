@@ -1,6 +1,5 @@
 import type { Database as SqlJsDatabase } from 'sql.js';
-import { proxyFetch } from './proxy-agent';
-import type { ProxyConfig } from '../commands/config';
+import { netFetch } from './net-fetch';
 
 // ── Shared types ──────────────────────────────────────────────
 
@@ -73,7 +72,6 @@ export async function fetchFromApi(
   category: string,
   startDate: string,
   endDate: string,
-  proxyConfig?: ProxyConfig,
 ): Promise<RawPaper[]> {
   const allPapers: RawPaper[] = [];
   const seenIds = new Set<string>();
@@ -85,10 +83,10 @@ export async function fetchFromApi(
   while (true) {
     const url = `${ARXIV_API_BASE}?search_query=${encodeURIComponent(searchQuery)}&start=${start}&max_results=${MAX_PER_PAGE}`;
 
-    const { body } = await proxyFetch(url, {
+    const { body } = await netFetch(url, {
       headers: { 'User-Agent': 'ArxivDailyGUI/1.0' },
       signal: AbortSignal.timeout(60000),
-    }, proxyConfig);
+    });
 
     const xml = body.toString('utf-8');
     const entries = parseAtomXml(xml);

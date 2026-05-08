@@ -17,11 +17,6 @@ export interface OutputConfig {
   auto_save: boolean
 }
 
-export interface ProxyConfig {
-  http: string
-  https: string
-}
-
 export interface ZoteroConfig {
   api_key: string
   user_id: string

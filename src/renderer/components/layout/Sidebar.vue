@@ -46,7 +46,7 @@
         <button class="btn-icon" @click="goToConfig">
           <Settings :size="14" />
         </button>
-        <button ref="queueBtnRef" class="btn-queue" @click="showQueuePanel = !showQueuePanel">
+        <button ref="queueBtnRef" class="btn-queue" @click="toggleQueuePanel">
           <span class="queue-icon">
             <ListChecks :size="14" />
             <span v-if="queueTotalCount > 0" class="queue-badge">{{ queueTotalCount }}</span>
@@ -91,7 +91,7 @@
             </div>
             </Transition>
             <div class="queue-section-divider"></div>
-            <div class="queue-panel-header queue-panel-header-deep" @click="analysisCollapsed = !analysisCollapsed">
+            <div class="queue-panel-header" @click="analysisCollapsed = !analysisCollapsed">
               <span class="queue-panel-title">分析队列</span>
               <div class="queue-header-actions">
                 <button v-if="analysisQueueStore.isRunning || analysisQueueStore.queue.length > 0" class="btn-queue-stop" @click.stop="analysisQueueStore.requestStop(); analysisQueueStore.clear()">全部取消</button>
@@ -101,7 +101,7 @@
               </div>
             </div>
             <Transition name="collapse">
-            <div v-show="!analysisCollapsed" class="queue-panel-list queue-panel-list-deep">
+            <div v-show="!analysisCollapsed" class="queue-panel-list">
               <div v-if="!analysisQueueStore.currentPaperId && analysisQueueStore.queue.length === 0" class="queue-empty">
                 <p>队列为空</p>
               </div>
@@ -118,6 +118,41 @@
                 <span class="queue-item-title">{{ item.title }}</span>
                 <span class="queue-item-status queue-item-status-deep">排队中</span>
                 <button class="queue-item-remove" @click="removeAnalysisItem(item.id)" title="取消">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            </Transition>
+            <div class="queue-section-divider"></div>
+            <div class="queue-panel-header" @click="downloadCollapsed = !downloadCollapsed">
+              <span class="queue-panel-title">下载队列</span>
+              <div class="queue-header-actions">
+                <button v-if="downloadStore.isRunning || downloadStore.queue.length > 0" class="btn-queue-stop" @click.stop="downloadStore.clear()">全部取消</button>
+                <svg class="collapse-arrow" :class="{ collapsed: downloadCollapsed }" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <Transition name="collapse">
+            <div v-show="!downloadCollapsed" class="queue-panel-list">
+              <div v-if="!downloadStore.currentPaperId && downloadStore.queue.length === 0" class="queue-empty">
+                <p>队列为空</p>
+              </div>
+              <div v-if="downloadStore.currentPaperId" class="queue-item queue-item-active">
+                <span class="queue-item-title">{{ downloadStore.currentPaperTitle || '下载中' }}</span>
+                <span class="queue-item-status">{{ downloadStore.currentProgress }}%</span>
+                <button class="queue-item-remove" @click="downloadStore.remove(downloadStore.currentPaperId!)" title="取消">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+              <div v-for="item in downloadStore.queue" :key="item.id" class="queue-item">
+                <span class="queue-item-title">{{ item.title }}</span>
+                <span class="queue-item-status">排队中</span>
+                <button class="queue-item-remove" @click="downloadStore.remove(item.id)" title="取消">
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                     <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                   </svg>
@@ -192,6 +227,7 @@ import { usePapersStore } from '../../stores/papers'
 import { useProgressStore } from '../../stores/progress'
 import { useSummaryQueueStore } from '../../stores/analysisQueue'
 import { useAnalysisQueueStore } from '../../stores/paperAnalysisQueue'
+import { useDownloadQueueStore } from '../../stores/downloadQueue'
 import { useToastStore } from '../../stores/toast'
 import { extractErrorMessage } from '../../utils/format'
 
@@ -200,16 +236,28 @@ const papersStore = usePapersStore()
 const progressStore = useProgressStore()
 const queueStore = useSummaryQueueStore()
 const analysisQueueStore = useAnalysisQueueStore()
+const downloadStore = useDownloadQueueStore()
 const toastStore = useToastStore()
 
 const showQueuePanel = ref(false)
 const queueBtnRef = ref<HTMLElement | null>(null)
-const summaryCollapsed = ref(false)
-const analysisCollapsed = ref(false)
+const summaryCollapsed = ref(true)
+const analysisCollapsed = ref(true)
+const downloadCollapsed = ref(true)
+
+const toggleQueuePanel = () => {
+  showQueuePanel.value = !showQueuePanel.value
+  if (showQueuePanel.value) {
+    summaryCollapsed.value = !queueStore.currentPaperId && queueStore.queue.length === 0
+    analysisCollapsed.value = !analysisQueueStore.currentPaperId && analysisQueueStore.queue.length === 0
+    downloadCollapsed.value = !downloadStore.currentPaperId && downloadStore.queue.length === 0
+  }
+}
 
 const queueTotalCount = computed(() => {
   return queueStore.queue.length + (queueStore.currentPaperId ? 1 : 0)
     + analysisQueueStore.queue.length + (analysisQueueStore.currentPaperId ? 1 : 0)
+    + downloadStore.queue.length + (downloadStore.currentPaperId ? 1 : 0)
 })
 
 const currentPaperTitle = computed(() => queueStore.currentPaperTitle)
@@ -622,7 +670,7 @@ const analyzePapersAction = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border-primary);
   background: var(--panel-header-bg);
   cursor: pointer;
@@ -633,17 +681,6 @@ const analyzePapersAction = async () => {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.sidebar-queue-panel .queue-panel-header-deep {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-primary);
-  background: var(--panel-header-bg);
-  cursor: pointer;
-  user-select: none;
 }
 
 .sidebar-queue-panel .queue-header-actions {
@@ -693,7 +730,7 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-queue-panel .queue-panel-list {
-  height: 220px;
+  height: 160px;
   overflow: hidden auto;
   overscroll-behavior: none;
   padding: 0;
@@ -702,19 +739,6 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-queue-panel .queue-panel-list::-webkit-scrollbar {
-  display: none;
-}
-
-.sidebar-queue-panel .queue-panel-list-deep {
-  height: 220px;
-  background: var(--panel-list-bg);
-  overflow: hidden auto;
-  overscroll-behavior: none;
-  padding: 0;
-  scrollbar-width: none;
-}
-
-.sidebar-queue-panel .queue-panel-list-deep::-webkit-scrollbar {
   display: none;
 }
 
@@ -728,12 +752,11 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-queue-panel .queue-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr;
   padding: 8px 16px;
   overflow: hidden;
+  align-items: center;
 }
 
 .sidebar-queue-panel .queue-item:hover .queue-item-remove {
@@ -745,7 +768,9 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-queue-panel .queue-item-status {
-  flex-shrink: 0;
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
   font-size: 12px;
   font-weight: 500;
   color: var(--color-success);
@@ -756,7 +781,9 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-queue-panel .queue-item-title {
-  flex: 1;
+  grid-column: 1;
+  grid-row: 1;
+  padding-right: 24px;
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.4;
@@ -767,10 +794,10 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-queue-panel .queue-item-remove {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
   width: 18px;
   height: 18px;
   padding: 0;
@@ -782,22 +809,11 @@ const analyzePapersAction = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 1;
+  visibility: hidden;
 }
 
-.sidebar-queue-panel .queue-item-remove::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 120px;
-  height: 120px;
-  background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 70%);
-  pointer-events: none;
-  z-index: -1;
+.sidebar-queue-panel .queue-item:hover .queue-item-remove {
+  visibility: visible;
 }
 
 .sidebar-queue-panel .queue-item-remove:hover {

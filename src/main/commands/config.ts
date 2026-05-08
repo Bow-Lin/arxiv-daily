@@ -13,11 +13,6 @@ export interface OutputConfig {
   auto_save: boolean;
 }
 
-export interface ProxyConfig {
-  http: string;
-  https: string;
-}
-
 export interface ZoteroConfig {
   api_key: string;
   user_id: string;
@@ -26,7 +21,6 @@ export interface ZoteroConfig {
 export interface ConfigResponse {
   llm: LLMConfig;
   output: OutputConfig;
-  proxy: ProxyConfig;
   zotero?: ZoteroConfig;
   theme?: string;
 }
@@ -70,24 +64,6 @@ export function loadLLMConfig(db: SqlJsDatabase): LLMConfig {
         break;
       }
     }
-  }
-  return config;
-}
-
-/**
- * Load proxy config from app_config table.
- */
-export function loadProxyConfig(db: SqlJsDatabase): ProxyConfig {
-  const config: ProxyConfig = { http: '', https: '' };
-
-  const rows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'proxy.%'");
-  if (rows.length === 0) return config;
-
-  for (const row of rows[0].values) {
-    const key = row[0] as string;
-    const value = row[1] as string;
-    if (key === 'proxy.http') config.http = value;
-    if (key === 'proxy.https') config.https = value;
   }
   return config;
 }
@@ -216,7 +192,7 @@ export function deleteTopic(db: SqlJsDatabase, topicId: number): void {
 }
 
 /**
- * Get full application config (LLM + output + proxy + theme).
+ * Get full application config (LLM + output + theme).
  */
 export function getConfig(db: SqlJsDatabase): ConfigResponse {
   const llmConfig = loadLLMConfig(db);
@@ -224,14 +200,10 @@ export function getConfig(db: SqlJsDatabase): ConfigResponse {
     output_dir: '',
     auto_save: false,
   };
-  const proxyConfig: ProxyConfig = {
-    http: '',
-    https: '',
-  };
   const zoteroConfig = loadZoteroConfig(db);
   let theme: string | undefined;
 
-  const configRows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'output.%' OR key LIKE 'proxy.%' OR key = 'theme'");
+  const configRows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'output.%' OR key = 'theme'");
   if (configRows.length > 0) {
     for (const row of configRows[0].values) {
       const key = row[0] as string;
@@ -243,12 +215,6 @@ export function getConfig(db: SqlJsDatabase): ConfigResponse {
         case 'output.auto_save':
           outputConfig.auto_save = value === 'true';
           break;
-        case 'proxy.http':
-          proxyConfig.http = value;
-          break;
-        case 'proxy.https':
-          proxyConfig.https = value;
-          break;
         case 'theme':
           theme = value;
           break;
@@ -256,13 +222,13 @@ export function getConfig(db: SqlJsDatabase): ConfigResponse {
     }
   }
 
-  return { llm: llmConfig, output: outputConfig, proxy: proxyConfig, zotero: zoteroConfig, theme };
+  return { llm: llmConfig, output: outputConfig, zotero: zoteroConfig, theme };
 }
 
 /**
- * Update application config (LLM + output + proxy + theme).
+ * Update application config (LLM + output + theme).
  */
-export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputConfig, proxy: ProxyConfig, zotero?: ZoteroConfig, theme?: string): void {
+export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputConfig, zotero?: ZoteroConfig, theme?: string): void {
   // Save LLM config
   db.run(
     `INSERT INTO app_config (key, value) VALUES ('llm.api_key', ?)
@@ -295,18 +261,6 @@ export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputCo
     `INSERT INTO app_config (key, value) VALUES ('output.auto_save', ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     [String(output.auto_save)],
-  );
-
-  // Save proxy config
-  db.run(
-    `INSERT INTO app_config (key, value) VALUES ('proxy.http', ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    [proxy.http],
-  );
-  db.run(
-    `INSERT INTO app_config (key, value) VALUES ('proxy.https', ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    [proxy.https],
   );
 
   // Save Zotero config

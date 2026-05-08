@@ -4,6 +4,7 @@ import { getPaperDetail } from '../api'
 import { usePapersStore } from './papers'
 import { useToastStore } from './toast'
 import { truncate, extractErrorMessage } from '../utils/format'
+import { useDownloadQueueStore } from './downloadQueue'
 
 export interface QueueItem {
   id: string
@@ -80,6 +81,7 @@ export const useAnalysisQueueStore = defineStore('analysisQueue', () => {
     progressPhase.value = ''
 
     const papersStore = usePapersStore()
+    const downloadStore = useDownloadQueueStore()
 
     const offProgress = window.api.onAnalysisProgress((phase: string) => {
       progressPhase.value = phase
@@ -93,6 +95,7 @@ export const useAnalysisQueueStore = defineStore('analysisQueue', () => {
         currentPaperTitle.value = item.title
 
         try {
+          await downloadStore.waitForDownload(item.id)
           const result = await window.api.analyzeFullPaper(item.id)
 
           if (result.cancelled) {

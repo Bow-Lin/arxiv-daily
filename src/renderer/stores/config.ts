@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, toRaw } from 'vue'
-import type { Topic, LLMConfig, OutputConfig, ProxyConfig, ZoteroConfig, Category } from '../types/config'
+import type { Topic, LLMConfig, OutputConfig, ZoteroConfig, Category } from '../types/config'
 import {
   listTopics, saveTopic as apiSaveTopic, deleteTopic as apiDeleteTopic,
   getConfig, updateConfig,
@@ -19,10 +19,6 @@ export const useConfigStore = defineStore('config', () => {
   const outputConfig = ref<OutputConfig>({
     output_dir: './output',
     auto_save: true,
-  })
-  const proxyConfig = ref<ProxyConfig>({
-    http: '',
-    https: '',
   })
   const zoteroConfig = ref<ZoteroConfig>({
     api_key: '',
@@ -75,16 +71,15 @@ export const useConfigStore = defineStore('config', () => {
   // Config
   const loadConfig = async () => {
     try {
-      const { llm, output, proxy, zotero, theme: savedTheme } = await getConfig()
+      const { llm, output, zotero, theme: savedTheme } = await getConfig()
       llmConfig.value = llm
       outputConfig.value = output
-      if (proxy) proxyConfig.value = proxy
       if (zotero) zoteroConfig.value = zotero
       if (savedTheme) theme.value = savedTheme as 'light' | 'dark' | 'system'
     } catch (err) { console.error('Failed to load config:', err) }
   }
   const saveAll = async () => {
-    await updateConfig({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), proxy: toRaw(proxyConfig.value), zotero: toRaw(zoteroConfig.value), theme: theme.value })
+    await updateConfig({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), zotero: toRaw(zoteroConfig.value), theme: theme.value })
   }
 
   // Initialize
@@ -93,7 +88,7 @@ export const useConfigStore = defineStore('config', () => {
   loadConfig()
 
   return {
-    topics, categories, llmConfig, outputConfig, proxyConfig, zoteroConfig, theme,
+    topics, categories, llmConfig, outputConfig, zoteroConfig, theme,
     loadTopics, addTopic, updateTopic, deleteTopic,
     loadCategories, addCategory, updateCategory, deleteCategory,
     loadConfig, saveAll,

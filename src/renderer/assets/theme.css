@@ -47,6 +47,7 @@
   --panel-list-bg: #ffffff;
   --card-border: #f0f0f0;
   --card-hover: #f9fafb;
+  --hover-expand: rgba(255, 255, 255, 0.95);
   --tag-active-text: #2563eb;
   --tag-bg: transparent;
   --tag-active-bg: #f3f4f6;
@@ -110,6 +111,7 @@
   --panel-list-bg: #3a3a3a;
   --card-border: #333333;
   --card-hover: #333333;
+  --hover-expand: rgba(0, 0, 0, 0.6);
   --tag-active-text: #cccccc;
   --tag-bg: transparent;
   --tag-active-bg: #3a3a3a;
