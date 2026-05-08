@@ -18,6 +18,9 @@
             >
               {{ expanded.has(toast.id) ? '收起' : '详情' }}
             </button>
+            <button class="toast-close" @click.stop="toastStore.remove(toast.id)">
+              <X :size="12" />
+            </button>
           </div>
           <div v-if="toast.details && expanded.has(toast.id)" class="toast-details">
             {{ toast.details }}
@@ -30,6 +33,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { X } from 'lucide-vue-next'
 import { useToastStore } from './stores/toast'
 
 const toastStore = useToastStore()
@@ -85,7 +89,7 @@ body {
   flex-direction: column;
   gap: 6px;
   animation: toastIn 0.25s ease;
-  max-width: 420px;
+  width: 300px;
   pointer-events: auto;
 }
 
@@ -97,6 +101,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .toast-title {
@@ -111,9 +116,33 @@ body {
   white-space: nowrap;
 }
 
+.toast-close {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-left: 2px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  color: #6b7280;
+}
+
+.toast-close:only-of-type {
+  margin-left: auto;
+}
+
 .toast-toggle {
   margin-left: auto;
-  padding: 2px 8px;
+  padding: 2px 4px;
   border: none;
   border-radius: 4px;
   font-size: 12px;
@@ -124,7 +153,8 @@ body {
 }
 
 .toast-toggle:hover {
-  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+  background: transparent;
 }
 
 .toast-error .toast-toggle {

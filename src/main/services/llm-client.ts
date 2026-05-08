@@ -28,6 +28,52 @@ export class LLMClient {
     return `${this.baseUrl.replace(/\/+$/, '')}/chat/completions`;
   }
 
+  private async doFetch(url: string, body: string, signal?: AbortSignal): Promise<Response> {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body,
+        signal,
+      });
+      if (!response.ok) {
+        const resBody = await response.text().catch(() => '');
+        const statusMsg = response.status === 401
+          ? 'API Key 无效或已过期 (HTTP 401)'
+          : response.status === 429
+            ? '请求频率过高 (HTTP 429)'
+            : response.status === 500
+              ? '服务端内部错误 (HTTP 500)'
+              : `HTTP ${response.status}`;
+        throw new Error(`${statusMsg}: ${resBody.slice(0, 200)}`);
+      }
+      return response;
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith('HTTP ')) throw e;
+      if (e instanceof DOMException && e.name === 'TimeoutError') {
+        throw new Error('请求超时');
+      }
+      throw new Error(`连接失败: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  private async parseResponse(response: Response): Promise<string> {
+    let chatResp: { choices?: { message?: { content?: string } }[] };
+    try {
+      chatResp = await response.json();
+    } catch (e) {
+      throw new Error(`响应解析失败: ${e}`);
+    }
+    const content = chatResp.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('返回了空响应');
+    }
+    return content.trim();
+  }
+
   /**
    * Analyze a paper using the LLM.
    */
@@ -90,34 +136,10 @@ export class LLMClient {
       ? AbortSignal.any([signal, timeoutSignal])
       : timeoutSignal;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: requestJson,
-      signal: combinedSignal,
-    });
+    const response = await this.doFetch(url, requestJson, combinedSignal);
+    const content = await this.parseResponse(response);
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw new Error(`API error ${response.status}: ${body.slice(0, 200)}`);
-    }
-
-    let chatResp: { choices?: { message?: { content?: string } }[] };
-    try {
-      chatResp = await response.json();
-    } catch (e) {
-      throw new Error(`Parse response error: ${e}`);
-    }
-
-    const content = chatResp.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error('No response from LLM');
-    }
-
-    return { analysis: content.trim() };
+    return { analysis: content };
   }
 
   /**
@@ -131,23 +153,8 @@ export class LLMClient {
     };
     const url = this.buildUrl();
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (response.ok) {
-      return 'Connection successful';
-    }
-
-    const body = await response.text().catch(() => '');
-    const detail = body.length > 200 ? `${body.slice(0, 200)}...` : body;
-    throw new Error(`HTTP ${response.status}: ${detail}`);
+    await this.doFetch(url, JSON.stringify(request), AbortSignal.timeout(30000));
+    return 'Connection successful';
   }
 
   /**
@@ -202,35 +209,9 @@ ${fullText}`;
       ? AbortSignal.any([signal, timeoutSignal])
       : timeoutSignal;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: requestJson,
-      signal: combinedSignal,
-    });
+    const response = await this.doFetch(url, requestJson, combinedSignal);
+    const content = await this.parseResponse(response);
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw new Error(`API error ${response.status}: ${body.slice(0, 200)}`);
-    }
-
-    let chatResp: { choices?: { message?: { content?: string } }[] };
-    try {
-      chatResp = await response.json();
-    } catch (e) {
-      throw new Error(`Parse response error: ${e}`);
-    }
-
-    const content = chatResp.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error('No response from LLM');
-    }
-
-    return {
-      analysis: content.trim(),
-    };
+    return { analysis: content };
   }
 }

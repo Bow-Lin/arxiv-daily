@@ -17,7 +17,12 @@ export async function fetchCollections(
   const res = await fetch(url, {
     headers: { 'Zotero-API-Key': apiKey },
   });
-  if (!res.ok) throw new Error(`Zotero API error ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const hint = res.status === 403 ? 'API Key 无权限 (HTTP 403)'
+      : res.status === 404 ? '用户不存在 (HTTP 404)'
+      : `HTTP ${res.status}`;
+    throw new Error(`Zotero ${hint}: ${await res.text().catch(() => '')}`);
+  }
   const data = await res.json();
   return (data || []).map((c: any) => ({
     key: c.key,
@@ -69,14 +74,19 @@ async function createItems(
     },
     body: JSON.stringify(items),
   });
-  if (!res.ok) throw new Error(`Zotero API error ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const hint = res.status === 403 ? 'API Key 无权限 (HTTP 403)'
+      : res.status === 404 ? '用户不存在 (HTTP 404)'
+      : `HTTP ${res.status}`;
+    throw new Error(`Zotero ${hint}: ${await res.text().catch(() => '')}`);
+  }
   const data = await res.json();
   const successKeys = Object.keys(data.successful || {});
   if (successKeys.length === 0) {
     console.error('[Zotero] API response:', JSON.stringify(data, null, 2));
     const failedKeys = Object.keys(data.failed || {});
     const failedMsg = failedKeys.length > 0 ? JSON.stringify(data.failed) : 'unknown';
-    throw new Error(`Zotero item creation failed: ${failedMsg}`);
+    throw new Error(`Zotero 条目创建失败: ${failedMsg}`);
   }
   return successKeys.map(idx => {
     const item = data.success[idx];

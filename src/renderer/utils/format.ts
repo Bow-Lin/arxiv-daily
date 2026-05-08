@@ -18,3 +18,10 @@ export function truncate(title: string, max = 40): string {
   if (title.length <= max) return title
   return `${Array.from(title).slice(0, max).join('')}...`
 }
+
+const IPC_ERROR_PREFIX = /^Error invoking remote method '[^']+':\s*/
+
+export function extractErrorMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  return msg.replace(IPC_ERROR_PREFIX, '')
+}

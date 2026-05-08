@@ -94,7 +94,7 @@ import { useAnalysisQueueStore } from '../../stores/paperAnalysisQueue'
 import { useToastStore } from '../../stores/toast'
 import { usePapersStore } from '../../stores/papers'
 import { renderLatex, renderMarkdown, renderMarkdownOnly } from '../../utils/katex'
-import { formatDateFull } from '../../utils/format'
+import { formatDateFull, extractErrorMessage } from '../../utils/format'
 import { listZoteroCollections, exportPaperToZotero } from '../../api'
 import type { ZoteroCollection } from '../../api'
 import 'katex/dist/katex.min.css'
@@ -200,7 +200,7 @@ const doDeletePdf = async () => {
     isPdfCached.value = false
     toastStore.show('已删除', 'PDF 已删除', 'success')
   } catch (err) {
-    toastStore.show('删除失败', err instanceof Error ? err.message : String(err), 'error')
+    toastStore.show('删除失败', '删除失败', 'error', extractErrorMessage(err))
   }
 }
 
@@ -212,7 +212,7 @@ const doDeleteSummary = async () => {
     papersStore.selectPaper(props.paper.id)
     toastStore.show('已删除', '论文总结已删除', 'success')
   } catch (err) {
-    toastStore.show('删除失败', err instanceof Error ? err.message : String(err), 'error')
+    toastStore.show('删除失败', '删除失败', 'error', extractErrorMessage(err))
   }
 }
 
@@ -224,7 +224,7 @@ const doDeleteAnalysis = async () => {
     papersStore.selectPaper(props.paper.id)
     toastStore.show('已删除', '论文分析已删除', 'success')
   } catch (err) {
-    toastStore.show('删除失败', err instanceof Error ? err.message : String(err), 'error')
+    toastStore.show('删除失败', '删除失败', 'error', extractErrorMessage(err))
   }
 }
 
@@ -246,13 +246,13 @@ const loadCollectionsIfNeeded = async () => {
       collections.value = await listZoteroCollections()
     } catch (err) {
       collections.value = []
-      const msg = err instanceof Error ? err.message : String(err)
-      if (msg.includes('未配置') || msg.includes('API Key') || msg.includes('User ID')) {
+      const msg = extractErrorMessage(err)
+      if (msg.includes('未配置')) {
         zoteroError.value = '请先在设置中配置 Zotero'
-        toastStore.show('未配置', '请先在设置中配置 Zotero API Key 和 User ID', 'error')
+        toastStore.show('未配置', '请先在设置中配置 Zotero', 'error')
       } else {
         zoteroError.value = 'Zotero 连接失败'
-        toastStore.show('连接失败', `无法访问 Zotero API: ${msg}`, 'error')
+        toastStore.show('连接失败', '无法访问 Zotero', 'error', msg)
       }
     } finally {
       loadingCollections.value = false
@@ -271,7 +271,7 @@ const doExportToZotero = async (collectionKey: string) => {
     toastStore.show('导出成功', '已成功导出到 Zotero', 'success')
   } catch (err) {
     console.error('Failed to export to Zotero:', err)
-    toastStore.show('导出失败', err instanceof Error ? err.message : String(err), 'error')
+    toastStore.show('导出失败', '导出到 Zotero 失败', 'error', extractErrorMessage(err))
   } finally {
     exportingToZotero.value = false
   }

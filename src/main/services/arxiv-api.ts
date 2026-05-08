@@ -85,14 +85,10 @@ export async function fetchFromApi(
   while (true) {
     const url = `${ARXIV_API_BASE}?search_query=${encodeURIComponent(searchQuery)}&start=${start}&max_results=${MAX_PER_PAGE}`;
 
-    const { body, statusCode } = await proxyFetch(url, {
+    const { body } = await proxyFetch(url, {
       headers: { 'User-Agent': 'ArxivDailyGUI/1.0' },
       signal: AbortSignal.timeout(60000),
     }, proxyConfig);
-
-    if (statusCode !== 200) {
-      throw new Error(`arXiv API returned ${statusCode}`);
-    }
 
     const xml = body.toString('utf-8');
     const entries = parseAtomXml(xml);

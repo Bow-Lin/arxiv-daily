@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { getPaperDetail } from '../api'
 import { usePapersStore } from './papers'
 import { useToastStore } from './toast'
-import { truncate } from '../utils/format'
+import { truncate, extractErrorMessage } from '../utils/format'
 
 export interface QueueItem {
   id: string
@@ -118,8 +118,8 @@ export const useAnalysisQueueStore = defineStore('analysisQueue', () => {
           }
         } catch (err) {
           errorCount.value++
-          const msg = err instanceof Error ? err.message : String(err)
-          useToastStore().show('分析失败', truncate(item.title), 'error')
+          const msg = extractErrorMessage(err)
+          useToastStore().show('分析失败', truncate(item.title), 'error', msg)
           console.error(`[AnalysisQueue] Error for paper ${item.id}: ${msg}`)
         }
 

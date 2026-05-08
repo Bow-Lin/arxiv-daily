@@ -9,6 +9,30 @@ function getProxyUrl(config: ProxyConfig): string | undefined {
   return config.https || config.http || undefined;
 }
 
+export function classifyDirectNetworkError(e: unknown): Error {
+  if (e instanceof DOMException && e.name === 'TimeoutError') {
+    return new Error('网络请求超时');
+  }
+  return new Error('网络连接失败');
+}
+
+export function classifyProxyNetworkError(e: Error): Error {
+  const msg = e.message;
+  if (msg.includes('ECONNREFUSED')) {
+    return new Error('代理连接被拒绝');
+  }
+  if (msg.includes('ENOTFOUND') || msg.includes('getaddrinfo')) {
+    return new Error('无法解析代理地址');
+  }
+  if (msg.includes('ETIMEDOUT') || msg.includes('ECONNRESET') || msg.includes('socket hang up')) {
+    return new Error('代理连接超时或被重置');
+  }
+  if (msg.includes('UNABLE_TO_VERIFY_LEAF_SIGNATURE') || msg.includes('certificate')) {
+    return new Error('SSL 证书验证失败');
+  }
+  return new Error(`代理连接失败: ${msg}`);
+}
+
 /**
  * A fetch-like function that supports HTTP/HTTPS proxy.
  * Falls back to native fetch when no proxy is configured.
@@ -25,12 +49,22 @@ export async function proxyFetch(
 
   if (!proxyUrl) {
     // No proxy — use native fetch
-    const response = await fetch(url, {
-      signal: options.signal,
-      headers: options.headers,
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        signal: options.signal,
+        headers: options.headers,
+      });
+    } catch (e) {
+      throw classifyDirectNetworkError(e);
+    }
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const hint = response.status === 429
+        ? '请求频率过高 (HTTP 429)'
+        : response.status === 503
+          ? '服务暂时不可用 (HTTP 503)'
+          : `HTTP ${response.status}`;
+      throw new Error(hint);
     }
     const arrayBuffer = await response.arrayBuffer();
     return { body: Buffer.from(arrayBuffer), statusCode: response.status };
@@ -57,7 +91,9 @@ export async function proxyFetch(
       res.on('error', reject);
     });
 
-    req.on('error', reject);
+    req.on('error', (e: Error) => {
+      reject(classifyProxyNetworkError(e));
+    });
 
     if (options.signal) {
       options.signal.addEventListener('abort', () => {

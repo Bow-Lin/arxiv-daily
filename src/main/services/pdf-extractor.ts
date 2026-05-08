@@ -1,9 +1,10 @@
 import { PDFParse } from 'pdf-parse';
-import { mkdir, writeFile, readFile, access, open } from 'fs/promises';
+import { mkdir, readFile, access, open } from 'fs/promises';
 import { join } from 'path';
 import http from 'http';
 import https from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { classifyDirectNetworkError, classifyProxyNetworkError } from './proxy-agent';
 import type { ProxyConfig } from '../commands/config';
 
 function getPdfDir(dataDir?: string): string {
@@ -20,6 +21,13 @@ export function getPdfPath(dataDir: string, url: string): string {
   return join(getPdfDir(dataDir), sanitizeFileName(url));
 }
 
+function wrapDownloadError(e: unknown, useProxy: boolean): Error {
+  const classified = useProxy
+    ? classifyProxyNetworkError(e as Error)
+    : classifyDirectNetworkError(e);
+  return new Error(`下载失败: ${classified.message}`);
+}
+
 async function downloadStreaming(
   url: string,
   filePath: string,
@@ -31,8 +39,13 @@ async function downloadStreaming(
 
   if (!proxyUrl) {
     // No proxy — native fetch with ReadableStream
-    const response = await fetch(url, { signal });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    let response: Response;
+    try {
+      response = await fetch(url, { signal });
+    } catch (e) {
+      throw wrapDownloadError(e, false);
+    }
+    if (!response.ok) throw new Error(`下载失败 (HTTP ${response.status})`);
 
     const total = parseInt(response.headers.get('content-length') || '', 10) || undefined;
     const reader = response.body!.getReader();
@@ -73,7 +86,7 @@ async function downloadStreaming(
             return;
           }
           if (!res.statusCode || res.statusCode >= 400) {
-            reject(new Error(`HTTP ${res.statusCode}`));
+            reject(new Error(`下载失败 (HTTP ${res.statusCode})`));
             return;
           }
           const len = res.headers['content-length'];
@@ -87,7 +100,10 @@ async function downloadStreaming(
           res.on('error', reject);
         });
 
-        req.on('error', reject);
+        req.on('error', (e: Error) => {
+          reject(wrapDownloadError(e, true));
+        });
+
         if (signal) {
           signal.addEventListener('abort', () => {
             req.destroy(new DOMException('Aborted', 'AbortError'));
@@ -144,9 +160,13 @@ export async function extractTextFromUrl(
   const filePath = await ensurePdfDownloaded(url, signal, dataDir, proxyConfig);
   onProgress?.('解析中');
 
-  const data = await readFile(filePath);
-  const parser = new PDFParse({ data: new Uint8Array(data) } as any);
-  const result = await parser.getText();
-  await parser.destroy();
-  return result.text || '';
+  try {
+    const data = await readFile(filePath);
+    const parser = new PDFParse({ data: new Uint8Array(data) } as any);
+    const result = await parser.getText();
+    await parser.destroy();
+    return result.text || '';
+  } catch (e) {
+    throw new Error(`解析失败: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }

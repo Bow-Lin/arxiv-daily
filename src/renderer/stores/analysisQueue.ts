@@ -4,7 +4,7 @@ import { getPaperDetail } from '../api'
 import { usePapersStore } from './papers'
 import { useProgressStore } from './progress'
 import { useToastStore } from './toast'
-import { truncate } from '../utils/format'
+import { truncate, extractErrorMessage } from '../utils/format'
 
 export interface QueueItem {
   id: string
@@ -121,8 +121,9 @@ export const useSummaryQueueStore = defineStore('summaryQueue', () => {
           }
         } catch (err) {
           errorCount.value++
-          const msg = err instanceof Error ? err.message : String(err)
+          const msg = extractErrorMessage(err)
           progressStore.lastError = msg
+          useToastStore().show('总结失败', truncate(item.title), 'error', msg)
           console.error(`[SummaryQueue] Error for paper ${item.id}: ${msg}`)
         }
 

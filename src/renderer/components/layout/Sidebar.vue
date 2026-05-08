@@ -179,6 +179,7 @@ import { useProgressStore } from '../../stores/progress'
 import { useSummaryQueueStore } from '../../stores/analysisQueue'
 import { useAnalysisQueueStore } from '../../stores/paperAnalysisQueue'
 import { useToastStore } from '../../stores/toast'
+import { extractErrorMessage } from '../../utils/format'
 
 const router = useRouter()
 const papersStore = usePapersStore()
@@ -241,23 +242,27 @@ async function doFetch(mode: 'today' | 'week') {
       ])
 
       const total = result.new_count + result.existing_count
+      const hasFailures = result.failed_categories.length > 0
+
       if (total > 0) {
         toastStore.show('获取完成', `获取${label}论文 ${total} 篇（新增 ${result.new_count} 篇）`, 'success')
-      } else {
+      } else if (!hasFailures) {
         toastStore.show('获取完成', `${label}无新论文`, 'info')
       }
 
-      if (result.failed_categories.length > 0) {
-        const summary = `${result.failed_categories.length} 个类别获取失败`
+      if (hasFailures) {
+        const summary = total > 0
+          ? `${result.failed_categories.length} 个类别获取失败`
+          : `全部类别获取失败`
         const details = result.failed_details
           .map(d => `[${d.category}] ${d.error}`)
           .join('\n')
-        toastStore.show('部分失败', summary, 'error', details)
+        toastStore.show('获取异常', summary, 'error', details)
       }
     }
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    toastStore.show('获取失败', `获取${label}论文失败: ${msg}`, 'error')
+    const msg = extractErrorMessage(err)
+    toastStore.show('获取失败', `获取${label}论文失败`, 'error', msg)
   } finally {
     progressStore.isFetching = false
     progressStore.progressPhase = ''
@@ -339,32 +344,37 @@ const fetchByDateAction = async () => {
     }
     const result = await fetchPapersByDate(params)
 
-    if (!result.success) {
-      toastStore.show('获取失败', `按日期获取失败: ${result.error || '未知错误'}`, 'error')
-    } else {
-      await Promise.all([
-        papersStore.loadFetchDates(),
-        papersStore.loadPapers(),
-      ])
+    await Promise.all([
+      papersStore.loadFetchDates(),
+      papersStore.loadPapers(),
+    ])
 
+    const hasFailures = result.failed_categories.length > 0
+    const hasResults = result.total_count > 0
+
+    if (hasResults) {
       let msg = `共 ${result.total_count} 篇论文`
       if (result.local_count > 0) msg += `（本地已有 ${result.local_count} 篇`
       if (result.new_count > 0) msg += `${result.local_count > 0 ? '，' : ''}新增 ${result.new_count} 篇`
       if (result.local_count > 0 || result.new_count > 0) msg += '）'
-
       toastStore.show('获取完成', msg, 'success')
-      if (result.failed_categories.length > 0) {
-        const summary = `${result.failed_categories.length} 个类别获取失败`
-        const details = result.failed_details
-          .map(d => `[${d.category}] ${d.error}`)
-          .join('\n')
-        toastStore.show('部分失败', summary, 'error', details)
-      }
-      showDateDialog.value = false
+    } else if (!hasFailures) {
+      toastStore.show('获取完成', '无新论文', 'info')
     }
+
+    if (hasFailures) {
+      const summary = hasResults
+        ? `${result.failed_categories.length} 个类别获取失败`
+        : `全部类别获取失败`
+      const details = result.failed_details
+        .map(d => `[${d.category}] ${d.error}`)
+        .join('\n')
+      toastStore.show('部分失败', summary, 'error', details)
+    }
+    showDateDialog.value = false
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    toastStore.show('获取失败', `按日期获取失败: ${msg}`, 'error')
+    const msg = extractErrorMessage(err)
+    toastStore.show('获取失败', '按日期获取失败', 'error', msg)
   } finally {
     isDateFetching.value = false
     progressStore.isFetching = false
@@ -381,8 +391,8 @@ const analyzePapersAction = async () => {
       toastStore.show('提示', '所有未分析论文已在队列中', 'info')
     }
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    toastStore.show('获取失败', `获取未分析论文失败: ${msg}`, 'error')
+    const msg = extractErrorMessage(err)
+    toastStore.show('获取失败', '获取未分析论文失败', 'error', msg)
   }
 }
 </script>

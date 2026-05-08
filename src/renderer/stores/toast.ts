@@ -24,9 +24,11 @@ export const useToastStore = defineStore('toast', () => {
     duration?: number,
   ) {
     const id = nextId++
-    const actualDuration = duration ?? (details ? 8000 : 3000)
+    const actualDuration = duration ?? (type === 'error' ? 0 : (details ? 8000 : 3000))
     toasts.value.push({ id, title, body, type, removing: false, details })
-    setTimeout(() => remove(id), actualDuration)
+    if (actualDuration > 0) {
+      setTimeout(() => remove(id), actualDuration)
+    }
   }
 
   function remove(id: number) {
