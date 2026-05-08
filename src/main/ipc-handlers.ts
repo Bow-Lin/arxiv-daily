@@ -45,7 +45,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     return configCmd.getConfig(sqlDb);
   });
   ipcMain.handle('update-config', async (_event, config) => {
-    configCmd.updateConfig(sqlDb, config.llm, config.output, config.proxy, config.zotero);
+    configCmd.updateConfig(sqlDb, config.llm, config.output, config.proxy, config.zotero, config.theme);
     await db.save();
   });
   ipcMain.handle('list-categories', async () => {

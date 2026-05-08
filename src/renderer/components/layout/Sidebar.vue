@@ -57,11 +57,17 @@
         <div v-if="showQueuePanel" class="sidebar-queue-panel">
           <div class="queue-panel-outer">
           <div class="queue-panel">
-            <div class="queue-panel-header">
+            <div class="queue-panel-header" @click="summaryCollapsed = !summaryCollapsed">
               <span class="queue-panel-title">总结队列</span>
-              <button v-if="queueStore.isRunning || queueStore.queue.length > 0" class="btn-queue-stop" @click="queueStore.requestStop(); queueStore.clear()">全部取消</button>
+              <div class="queue-header-actions">
+                <button v-if="queueStore.isRunning || queueStore.queue.length > 0" class="btn-queue-stop" @click.stop="queueStore.requestStop(); queueStore.clear()">全部取消</button>
+                <svg class="collapse-arrow" :class="{ collapsed: summaryCollapsed }" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
             </div>
-            <div class="queue-panel-list">
+            <Transition name="collapse">
+            <div v-show="!summaryCollapsed" class="queue-panel-list">
               <div v-if="!queueStore.currentPaperId && queueStore.queue.length === 0" class="queue-empty">
                 <p>队列为空</p>
               </div>
@@ -83,12 +89,19 @@
                 </button>
               </div>
             </div>
+            </Transition>
             <div class="queue-section-divider"></div>
-            <div class="queue-panel-header queue-panel-header-deep">
+            <div class="queue-panel-header queue-panel-header-deep" @click="analysisCollapsed = !analysisCollapsed">
               <span class="queue-panel-title">分析队列</span>
-              <button v-if="analysisQueueStore.isRunning || analysisQueueStore.queue.length > 0" class="btn-queue-stop" @click="analysisQueueStore.requestStop(); analysisQueueStore.clear()">全部取消</button>
+              <div class="queue-header-actions">
+                <button v-if="analysisQueueStore.isRunning || analysisQueueStore.queue.length > 0" class="btn-queue-stop" @click.stop="analysisQueueStore.requestStop(); analysisQueueStore.clear()">全部取消</button>
+                <svg class="collapse-arrow" :class="{ collapsed: analysisCollapsed }" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
             </div>
-            <div class="queue-panel-list queue-panel-list-deep">
+            <Transition name="collapse">
+            <div v-show="!analysisCollapsed" class="queue-panel-list queue-panel-list-deep">
               <div v-if="!analysisQueueStore.currentPaperId && analysisQueueStore.queue.length === 0" class="queue-empty">
                 <p>队列为空</p>
               </div>
@@ -111,6 +124,7 @@
                 </button>
               </div>
             </div>
+            </Transition>
           </div>
           </div>
         </div>
@@ -190,6 +204,8 @@ const toastStore = useToastStore()
 
 const showQueuePanel = ref(false)
 const queueBtnRef = ref<HTMLElement | null>(null)
+const summaryCollapsed = ref(false)
+const analysisCollapsed = ref(false)
 
 const queueTotalCount = computed(() => {
   return queueStore.queue.length + (queueStore.currentPaperId ? 1 : 0)
@@ -401,7 +417,7 @@ const analyzePapersAction = async () => {
 .sidebar {
   width: 100%;
   min-width: 180px;
-  background: #f9fafb;
+  background: var(--sidebar-bg);
   border-right: none;
   height: 100%;
   display: flex;
@@ -419,7 +435,7 @@ const analyzePapersAction = async () => {
   height: 30px;
   padding: 0 10px;
   background: transparent;
-  color: #374151;
+  color: var(--text-secondary);
   border: none;
   border-radius: 6px;
   font-size: 13px;
@@ -431,7 +447,7 @@ const analyzePapersAction = async () => {
 }
 
 .btn-fetch:hover:not(:disabled) {
-  background: #e8e8e8;
+  background: var(--border-primary);
 }
 
 .btn-fetch:disabled {
@@ -440,11 +456,11 @@ const analyzePapersAction = async () => {
 }
 
 .btn-analyze {
-  color: #059669;
+  color: var(--color-success);
 }
 
 .btn-analyze:hover:not(:disabled) {
-  background: #e8e8e8;
+  background: var(--border-primary);
 }
 
 .dates-section {
@@ -471,11 +487,11 @@ const analyzePapersAction = async () => {
 }
 
 .nav-item:hover {
-  background: #f0f0f0;
+  background: var(--card-border);
 }
 
 .nav-item.active {
-  background: #dbeafe;
+  background: var(--nav-active);
 }
 
 .nav-label {
@@ -486,7 +502,7 @@ const analyzePapersAction = async () => {
 .section-title {
   font-size: 12px;
   font-weight: 600;
-  color: #9ca3af;
+  color: var(--text-placeholder);
   text-transform: uppercase;
   padding: 0 12px;
   margin-top: 14px;
@@ -495,15 +511,15 @@ const analyzePapersAction = async () => {
 
 .nav-count {
   font-size: 12px;
-  color: #6b7280;
-  background: #e5e7eb;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
   padding: 2px 8px;
   border-radius: 10px;
 }
 
 .sidebar-footer {
   padding: 6px 12px;
-  border-top: 1px solid #e8e8e8;
+  border-top: 1px solid var(--border-primary);
 }
 
 .footer-row {
@@ -518,7 +534,7 @@ const analyzePapersAction = async () => {
   height: 32px;
   padding: 0;
   background: transparent;
-  color: #6b7280;
+  color: var(--text-tertiary);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -529,8 +545,8 @@ const analyzePapersAction = async () => {
 }
 
 .btn-queue:hover {
-  background: #e8e8e8;
-  color: #374151;
+  background: var(--border-primary);
+  color: var(--text-secondary);
 }
 
 .queue-icon {
@@ -547,8 +563,8 @@ const analyzePapersAction = async () => {
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
-  background: #059669;
-  color: #fff;
+  background: var(--badge-success);
+  color: var(--card-bg);
   font-size: 9px;
   font-weight: 600;
   border-radius: 7px;
@@ -563,7 +579,7 @@ const analyzePapersAction = async () => {
   height: 32px;
   padding: 0;
   background: transparent;
-  color: #6b7280;
+  color: var(--text-tertiary);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -573,8 +589,8 @@ const analyzePapersAction = async () => {
 }
 
 .btn-icon:hover {
-  background: #e8e8e8;
-  color: #374151;
+  background: var(--border-primary);
+  color: var(--text-secondary);
 }
 </style>
 
@@ -586,14 +602,15 @@ const analyzePapersAction = async () => {
   left: 252px;
   width: 360px;
   z-index: 301;
-  filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.15));
+  filter: drop-shadow(0 8px 30px var(--shadow-lg));
   animation: sidebar-fadeIn 0.15s ease;
 }
 
 .sidebar-queue-panel .queue-panel {
-  background: #fff;
-  border: 1px solid #e8e8e8;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-primary);
   border-radius: 12px;
+  overflow: hidden;
 }
 
 @keyframes sidebar-fadeIn {
@@ -606,13 +623,16 @@ const analyzePapersAction = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 14px 16px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--panel-header-bg);
+  cursor: pointer;
+  user-select: none;
 }
 
 .sidebar-queue-panel .queue-panel-title {
   font-size: 14px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--text-primary);
 }
 
 .sidebar-queue-panel .queue-panel-header-deep {
@@ -620,21 +640,56 @@ const analyzePapersAction = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 14px 16px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--panel-header-bg);
+  cursor: pointer;
+  user-select: none;
+}
+
+.sidebar-queue-panel .queue-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-queue-panel .collapse-arrow {
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-queue-panel .collapse-arrow.collapsed {
+  transform: rotate(-90deg);
+}
+
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: max-height 0.2s ease;
+  overflow: hidden;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  max-height: 0;
+}
+
+.collapse-enter-to,
+.collapse-leave-from {
+  max-height: 220px;
 }
 
 .sidebar-queue-panel .btn-queue-stop {
   padding: 2px 8px;
-  background: #fff;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: var(--card-bg);
+  color: var(--color-error);
+  border: 1px solid var(--color-error-border);
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
 }
 
 .sidebar-queue-panel .btn-queue-stop:hover {
-  background: #fee2e2;
+  background: var(--color-error-bg);
 }
 
 .sidebar-queue-panel .queue-panel-list {
@@ -643,6 +698,7 @@ const analyzePapersAction = async () => {
   overscroll-behavior: none;
   padding: 0;
   scrollbar-width: none;
+  background: var(--panel-list-bg);
 }
 
 .sidebar-queue-panel .queue-panel-list::-webkit-scrollbar {
@@ -651,6 +707,7 @@ const analyzePapersAction = async () => {
 
 .sidebar-queue-panel .queue-panel-list-deep {
   height: 220px;
+  background: var(--panel-list-bg);
   overflow: hidden auto;
   overscroll-behavior: none;
   padding: 0;
@@ -666,7 +723,7 @@ const analyzePapersAction = async () => {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #9ca3af;
+  color: var(--text-placeholder);
   font-size: 13px;
 }
 
@@ -684,15 +741,15 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-queue-panel .queue-item-active {
-  background: #f0fdf4;
+  background: var(--color-success-bg);
 }
 
 .sidebar-queue-panel .queue-item-status {
   flex-shrink: 0;
   font-size: 12px;
   font-weight: 500;
-  color: #059669;
-  background: #d1fae5;
+  color: var(--color-success);
+  background: var(--color-success-bg);
   padding: 1px 6px;
   border-radius: 4px;
   white-space: nowrap;
@@ -701,7 +758,7 @@ const analyzePapersAction = async () => {
 .sidebar-queue-panel .queue-item-title {
   flex: 1;
   font-size: 13px;
-  color: #374151;
+  color: var(--text-secondary);
   line-height: 1.4;
   overflow: hidden;
   display: -webkit-box;
@@ -719,8 +776,8 @@ const analyzePapersAction = async () => {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: #fff;
-  color: #9ca3af;
+  background: var(--card-bg);
+  color: var(--text-placeholder);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -744,23 +801,23 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-queue-panel .queue-item-remove:hover {
-  color: #dc2626;
-  background: #fee2e2;
+  color: var(--color-error);
+  background: var(--color-error-bg);
 }
 
 .sidebar-queue-panel .queue-section-divider {
   height: 1px;
-  background: #e8e8e8;
+  background: var(--border-primary);
   margin: 0;
 }
 
 .sidebar-queue-panel .queue-item-active-deep {
-  background: #f5f3ff;
+  background: var(--color-deep-bg);
 }
 
 .sidebar-queue-panel .queue-item-status-deep {
-  color: #7c3aed;
-  background: #e9d5ff;
+  color: var(--color-deep);
+  background: var(--color-deep-border);
 }
 
 .sidebar-dialog .dialog-overlay {
@@ -769,7 +826,7 @@ const analyzePapersAction = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -777,9 +834,9 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-dialog .dialog-box {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 60px var(--shadow-lg);
   width: 440px;
   max-width: 90vw;
 }
@@ -805,7 +862,7 @@ const analyzePapersAction = async () => {
 .sidebar-dialog .form-label {
   display: block;
   font-size: 13px;
-  color: #374151;
+  color: var(--text-secondary);
   margin-bottom: 6px;
 }
 
@@ -813,16 +870,16 @@ const analyzePapersAction = async () => {
   width: 100%;
   height: 36px;
   padding: 0 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-secondary);
   border-radius: 6px;
   font-size: 14px;
-  color: #1a1a1a;
+  color: var(--text-primary);
   box-sizing: border-box;
 }
 
 .sidebar-dialog .form-input:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
@@ -840,20 +897,20 @@ const analyzePapersAction = async () => {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #374151;
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
 .sidebar-dialog .category-separator {
   height: 1px;
-  background: #e5e7eb;
+  background: var(--bg-tertiary);
   margin: 4px 0;
 }
 
 .sidebar-dialog .checkbox-label input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: #2563eb;
+  accent-color: var(--color-primary);
 }
 
 .sidebar-dialog .dialog-footer {
@@ -861,29 +918,29 @@ const analyzePapersAction = async () => {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px 20px;
-  border-top: 1px solid #e8e8e8;
+  border-top: 1px solid var(--border-primary);
 }
 
 .sidebar-dialog .btn-cancel {
   height: 36px;
   padding: 0 20px;
-  background: #fff;
-  color: #6b7280;
-  border: 1px solid #e8e8e8;
+  background: var(--card-bg);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
 }
 
 .sidebar-dialog .btn-cancel:hover {
-  background: #f9fafb;
-  color: #374151;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 .sidebar-dialog .btn-primary {
   height: 36px;
   padding: 0 20px;
-  background: #2563eb;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 6px;
@@ -893,7 +950,7 @@ const analyzePapersAction = async () => {
 }
 
 .sidebar-dialog .btn-primary:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: var(--color-primary-hover);
 }
 
 .sidebar-dialog .btn-primary:disabled {

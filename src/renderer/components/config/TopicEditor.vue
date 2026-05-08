@@ -41,7 +41,7 @@
         <input v-model="newKeywords" placeholder="例如：深度学习, 计算机视觉, Transformer" class="edit-input" />
       </div>
       <div class="edit-actions">
-        <button @click="saveNew" class="btn-save">保存</button>
+        <button @click="saveNew" class="btn-save">添加</button>
         <button @click="cancelAdd" class="btn-cancel">取消</button>
       </div>
     </div>
@@ -122,7 +122,7 @@ const deleteTopic = async (id: number) => {
 
 <style scoped>
 .topic-editor {
-  background: #f9fafb;
+  background: var(--bg-secondary);
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
@@ -138,8 +138,8 @@ const deleteTopic = async (id: number) => {
 }
 
 .topic-item {
-  background: #ffffff;
-  border: 1px solid #e8e8e8;
+  background: var(--card-bg);
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   padding: 10px 12px;
   margin-bottom: 8px;
@@ -167,7 +167,7 @@ const deleteTopic = async (id: number) => {
 .topic-keywords {
   display: block;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .topic-actions {
@@ -179,21 +179,21 @@ const deleteTopic = async (id: number) => {
 .btn-action {
   padding: 6px 14px;
   background: transparent;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border-primary);
   border-radius: 4px;
   font-size: 13px;
   cursor: pointer;
-  color: #4b5563;
+  color: var(--text-secondary);
 }
 
 .btn-action:hover {
-  background: #f3f4f6;
+  background: var(--bg-tertiary);
 }
 
 .btn-action.delete:hover {
-  background: #fee2e2;
-  border-color: #fecaca;
-  color: #dc2626;
+  background: var(--color-error-bg);
+  border-color: var(--color-error-border);
+  color: var(--color-error);
 }
 
 .topic-edit,
@@ -212,14 +212,16 @@ const deleteTopic = async (id: number) => {
 .field-label {
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .edit-input {
   padding: 8px 12px;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border-primary);
   border-radius: 4px;
   font-size: 14px;
+  height: 36px;
+  box-sizing: border-box;
 }
 
 .edit-actions {
@@ -237,25 +239,25 @@ const deleteTopic = async (id: number) => {
 }
 
 .btn-save {
-  background: #2563eb;
+  background: var(--color-primary);
   color: white;
   border: none;
 }
 
 .btn-cancel {
-  background: #ffffff;
-  border: 1px solid #e8e8e8;
+  background: var(--card-bg);
+  border: 1px solid var(--border-primary);
 }
 
 .btn-add {
-  background: #ffffff;
-  border: 1px dashed #d1d5db;
-  color: #6b7280;
+  background: var(--card-bg);
+  border: 1px dashed var(--border-secondary);
+  color: var(--text-tertiary);
   width: 100%;
 }
 
 .btn-add:hover {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 </style>

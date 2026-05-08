@@ -87,7 +87,7 @@ const testConnection = async () => {
 
 <style scoped>
 .llm-settings {
-  background: #f9fafb;
+  background: var(--bg-secondary);
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
@@ -136,7 +136,7 @@ const testConnection = async () => {
   height: 28px;
   border: none;
   background: transparent;
-  color: #9ca3af;
+  color: var(--text-placeholder);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -145,13 +145,13 @@ const testConnection = async () => {
 }
 
 .toggle-visibility:hover {
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .form-row input {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   font-size: 14px;
   height: 36px;
@@ -168,20 +168,19 @@ const testConnection = async () => {
   align-items: center;
   gap: 12px;
   margin-top: 12px;
-  padding-left: 112px;
 }
 
 .btn-test {
   padding: 8px 20px;
-  background: #ffffff;
-  border: 1px solid #e8e8e8;
+  background: var(--card-bg);
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
 }
 
 .btn-test:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--bg-tertiary);
 }
 
 .btn-test:disabled {
@@ -190,12 +189,12 @@ const testConnection = async () => {
 }
 
 .test-success {
-  color: #059669;
+  color: var(--color-success);
   font-size: 13px;
 }
 
 .test-error {
-  color: #dc2626;
+  color: var(--color-error);
   font-size: 13px;
 }
 </style>

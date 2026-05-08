@@ -44,20 +44,26 @@ const formatAuthors = (authors: string[]) => {
 
 <style scoped>
 .paper-card {
-  background: #ffffff;
+  background: var(--card-bg);
   padding: 14px 16px;
   margin-bottom: 0;
   cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--card-border);
   transition: background 0.15s;
 }
 
 .paper-card:hover {
-  background: #f9fafb;
+  background: var(--card-hover);
 }
 
 .paper-card.selected {
-  background: #eff6ff;
+  background: var(--card-selected);
+}
+
+.paper-card.selected .paper-date,
+.paper-card.selected .paper-authors,
+.paper-card.selected .status-indicator {
+  color: var(--card-selected-text);
 }
 
 .card-header {
@@ -70,7 +76,7 @@ const formatAuthors = (authors: string[]) => {
 .paper-title {
   font-size: 14px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--text-secondary);
   line-height: 1.4;
   flex: 1;
   margin-right: 12px;
@@ -78,13 +84,13 @@ const formatAuthors = (authors: string[]) => {
 
 .paper-date {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   white-space: nowrap;
 }
 
 .paper-authors {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-tertiary);
   margin-bottom: 8px;
 }
 
@@ -102,23 +108,23 @@ const formatAuthors = (authors: string[]) => {
 
 .category-tag {
   font-size: 12px;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--text-tertiary);
+  background: var(--category-bg);
   padding: 2px 6px;
   border-radius: 4px;
 }
 
 .status-indicator {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-tertiary);
   flex-shrink: 0;
 }
 
 .status-indicator.analyzed {
-  color: #10b981;
+  color: var(--badge-success);
 }
 
 .status-indicator.failed {
-  color: #dc2626;
+  color: var(--color-error);
 }
 </style>

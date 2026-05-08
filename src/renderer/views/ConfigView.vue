@@ -8,6 +8,21 @@
     </header>
 
     <div class="config-content">
+      <div class="config-section theme-section">
+        <h3 class="section-title">外观设置</h3>
+        <div class="theme-options">
+          <button
+            v-for="option in themeOptions"
+            :key="option.value"
+            class="theme-btn"
+            :class="{ active: pendingTheme === option.value }"
+            @click="pendingTheme = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
       <CategoryEditor />
       <TopicEditor />
       <LLMSettings />
@@ -62,6 +77,12 @@ const configStore = useConfigStore()
 const papersStore = usePapersStore()
 const toastStore = useToastStore()
 const confirmClearData = ref(false)
+const themeOptions = [
+  { value: 'light', label: '浅色' },
+  { value: 'dark', label: '深色' },
+  { value: 'system', label: '跟随系统' },
+]
+const pendingTheme = ref(configStore.theme)
 const confirmClearAnalyses = ref(false)
 let confirmDataTimer: number | null = null
 let confirmAnalysesTimer: number | null = null
@@ -79,6 +100,7 @@ const goBack = () => router.push('/')
 
 const saveAll = async () => {
   try {
+    configStore.theme = pendingTheme.value
     await configStore.saveAll()
     toastStore.show('保存成功', '设置已保存', 'success')
   } catch (err) {
@@ -130,13 +152,13 @@ const handleClearAnalyses = async () => {
 .config-view {
   height: 100vh;
   overflow-y: auto;
-  background: #ffffff;
+  background: var(--card-bg);
 }
 
 .config-header {
   height: 48px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border-primary);
   display: flex;
   align-items: center;
   padding: 0 24px 0 80px;
@@ -154,7 +176,7 @@ const handleClearAnalyses = async () => {
 .back-btn {
   width: 32px;
   height: 32px;
-  color: #6b7280;
+  color: var(--text-tertiary);
   -webkit-app-region: no-drag;
   border: none;
   background: transparent;
@@ -166,13 +188,13 @@ const handleClearAnalyses = async () => {
 }
 
 .back-btn:hover {
-  background: #f0f0f0;
+  background: var(--card-border);
 }
 
 .config-header h1 {
   font-size: 16px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .config-content {
@@ -188,7 +210,7 @@ const handleClearAnalyses = async () => {
 
 .btn-primary {
   padding: 12px 32px;
-  background: #2563eb;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 6px;
@@ -198,48 +220,48 @@ const handleClearAnalyses = async () => {
 }
 
 .btn-primary:hover {
-  background: #1d4ed8;
+  background: var(--color-primary-hover);
 }
 
 .danger-zone {
   margin-top: 48px;
   padding: 20px;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--color-error-border);
   border-radius: 8px;
-  background: #fef2f2;
+  background: var(--color-error-bg);
 }
 
 .danger-title {
   font-size: 15px;
   font-weight: 600;
-  color: #dc2626;
+  color: var(--color-error);
   margin-bottom: 8px;
 }
 
 .danger-desc {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-tertiary);
   margin-bottom: 12px;
 }
 
 .btn-danger {
   padding: 10px 24px;
-  background: #fff;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: var(--card-bg);
+  color: var(--color-error);
+  border: 1px solid var(--color-error-border);
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
 }
 
 .btn-danger:hover {
-  background: #fee2e2;
+  background: var(--color-error-bg);
 }
 
 .btn-danger.confirming {
-  background: #dc2626;
+  background: var(--color-error);
   color: white;
-  border-color: #dc2626;
+  border-color: var(--color-error);
   animation: pulse 1s infinite;
 }
 
@@ -250,8 +272,47 @@ const handleClearAnalyses = async () => {
 
 .danger-divider {
   height: 1px;
-  background: #fecaca;
+  background: var(--color-error-border);
   margin: 16px 0;
+}
+
+.theme-section {
+  margin-bottom: 20px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.theme-options {
+  display: flex;
+  gap: 8px;
+}
+
+.theme-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.theme-btn:hover {
+  border-color: var(--border-secondary);
+}
+
+.theme-btn.active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
 }
 
 </style>

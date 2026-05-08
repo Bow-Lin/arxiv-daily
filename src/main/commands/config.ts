@@ -28,6 +28,7 @@ export interface ConfigResponse {
   output: OutputConfig;
   proxy: ProxyConfig;
   zotero?: ZoteroConfig;
+  theme?: string;
 }
 
 export interface Category {
@@ -215,7 +216,7 @@ export function deleteTopic(db: SqlJsDatabase, topicId: number): void {
 }
 
 /**
- * Get full application config (LLM + output + proxy).
+ * Get full application config (LLM + output + proxy + theme).
  */
 export function getConfig(db: SqlJsDatabase): ConfigResponse {
   const llmConfig = loadLLMConfig(db);
@@ -228,8 +229,9 @@ export function getConfig(db: SqlJsDatabase): ConfigResponse {
     https: '',
   };
   const zoteroConfig = loadZoteroConfig(db);
+  let theme: string | undefined;
 
-  const configRows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'output.%' OR key LIKE 'proxy.%'");
+  const configRows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'output.%' OR key LIKE 'proxy.%' OR key = 'theme'");
   if (configRows.length > 0) {
     for (const row of configRows[0].values) {
       const key = row[0] as string;
@@ -247,17 +249,20 @@ export function getConfig(db: SqlJsDatabase): ConfigResponse {
         case 'proxy.https':
           proxyConfig.https = value;
           break;
+        case 'theme':
+          theme = value;
+          break;
       }
     }
   }
 
-  return { llm: llmConfig, output: outputConfig, proxy: proxyConfig, zotero: zoteroConfig };
+  return { llm: llmConfig, output: outputConfig, proxy: proxyConfig, zotero: zoteroConfig, theme };
 }
 
 /**
- * Update application config (LLM + output + proxy).
+ * Update application config (LLM + output + proxy + theme).
  */
-export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputConfig, proxy: ProxyConfig, zotero?: ZoteroConfig): void {
+export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputConfig, proxy: ProxyConfig, zotero?: ZoteroConfig, theme?: string): void {
   // Save LLM config
   db.run(
     `INSERT INTO app_config (key, value) VALUES ('llm.api_key', ?)
@@ -315,6 +320,15 @@ export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputCo
       `INSERT INTO app_config (key, value) VALUES ('zotero.user_id', ?)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       [zotero.user_id],
+    );
+  }
+
+  // Save theme
+  if (theme) {
+    db.run(
+      `INSERT INTO app_config (key, value) VALUES ('theme', ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [theme],
     );
   }
 }

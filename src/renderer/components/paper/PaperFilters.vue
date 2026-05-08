@@ -43,15 +43,15 @@ onUnmounted(() => {
 .search-bar {
   display: flex;
   align-items: center;
-  background: #f9fafb;
-  border: 1px solid #e8e8e8;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   padding: 0 12px;
 }
 
 .search-icon {
   font-size: 14px;
-  color: #9ca3af;
+  color: var(--text-placeholder);
   margin-right: 8px;
 }
 
@@ -65,6 +65,6 @@ onUnmounted(() => {
 }
 
 .search-bar input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 </style>

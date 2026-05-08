@@ -9,6 +9,6 @@
   flex: 0 1 480px;
   min-width: 300px;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--card-bg);
 }
 </style>

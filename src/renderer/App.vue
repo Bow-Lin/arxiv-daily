@@ -32,12 +32,40 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useToastStore } from './stores/toast'
+import { useConfigStore } from './stores/config'
 
 const toastStore = useToastStore()
+const configStore = useConfigStore()
 const expanded = ref(new Set<number>())
+
+function applyTheme(t: string) {
+  let resolved: 'light' | 'dark'
+  if (t === 'system') {
+    resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  } else {
+    resolved = t as 'light' | 'dark'
+  }
+  document.documentElement.setAttribute('data-theme', resolved)
+}
+
+watch(() => configStore.theme, (val) => applyTheme(val), { immediate: true })
+
+let mediaQuery: MediaQueryList | null = null
+const onSystemThemeChange = () => {
+  if (configStore.theme === 'system') applyTheme('system')
+}
+
+onMounted(() => {
+  mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  mediaQuery.addEventListener('change', onSystemThemeChange)
+})
+
+onUnmounted(() => {
+  mediaQuery?.removeEventListener('change', onSystemThemeChange)
+})
 
 function toggleExpand(id: number) {
   const next = new Set(expanded.value)
@@ -59,14 +87,38 @@ function toggleExpand(id: number) {
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background: #ffffff;
-  color: #1a1a1a;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .app {
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-secondary) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-placeholder);
 }
 
 /* Toast notifications */
@@ -110,7 +162,7 @@ body {
 }
 
 .toast-body {
-  color: #6b7280;
+  color: var(--text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -124,7 +176,7 @@ body {
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: #9ca3af;
+  color: var(--text-placeholder);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -133,7 +185,7 @@ body {
 }
 
 .toast-close:hover {
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .toast-close:only-of-type {
@@ -148,29 +200,29 @@ body {
   font-size: 12px;
   cursor: pointer;
   background: transparent;
-  color: #2563eb;
+  color: var(--color-primary);
   flex-shrink: 0;
 }
 
 .toast-toggle:hover {
-  color: #1d4ed8;
+  color: var(--color-primary-hover);
   background: transparent;
 }
 
 .toast-error .toast-toggle {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 .toast-error .toast-toggle:hover {
-  background: rgba(220, 38, 38, 0.08);
+  background: var(--color-error-bg);
 }
 
 .toast-details {
   padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-tertiary);
   border-radius: 6px;
   font-size: 12px;
-  color: #374151;
+  color: var(--text-secondary);
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
@@ -179,30 +231,30 @@ body {
 }
 
 .toast-success {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
 }
 
 .toast-success .toast-title {
-  color: #059669;
+  color: var(--color-success);
 }
 
 .toast-info {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--color-primary-bg);
+  border: 1px solid var(--color-primary-border);
 }
 
 .toast-info .toast-title {
-  color: #2563eb;
+  color: var(--color-primary);
 }
 
 .toast-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
 }
 
 .toast-error .toast-title {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 @keyframes toastIn {

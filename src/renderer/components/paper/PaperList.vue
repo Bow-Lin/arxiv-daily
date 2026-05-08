@@ -113,7 +113,7 @@ const retry = () => {
 .paper-list-header {
   flex-shrink: 0;
   padding: 4px 12px 4px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .paper-list-scroll {
@@ -131,21 +131,21 @@ const retry = () => {
 
 .topic-tag {
   padding: 6px 12px;
-  background: #f3f4f6;
+  background: var(--tag-bg);
   border-radius: 16px;
   font-size: 13px;
-  color: #4b5563;
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
 .topic-tag.active {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--tag-active-bg);
+  color: var(--tag-active-text);
 }
 
 .result-summary {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--text-placeholder);
   margin: 12px 0 0;
 }
 
@@ -159,7 +159,7 @@ const retry = () => {
 .error-state {
   text-align: center;
   padding: 60px 20px;
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .empty-state p,
@@ -170,7 +170,7 @@ const retry = () => {
 
 .retry-btn {
   padding: 8px 24px;
-  background: #2563eb;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 6px;
@@ -179,6 +179,6 @@ const retry = () => {
 }
 
 .retry-btn:hover {
-  background: #1d4ed8;
+  background: var(--color-primary-hover);
 }
 </style>

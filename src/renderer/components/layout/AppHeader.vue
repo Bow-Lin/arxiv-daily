@@ -50,8 +50,8 @@ onUnmounted(() => {
 <style scoped>
 .app-header {
   height: 48px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,8 +77,8 @@ onUnmounted(() => {
   height: 32px;
   display: flex;
   align-items: center;
-  background: #f9fafb;
-  border: 1px solid #e8e8e8;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   padding: 0 10px;
 }
@@ -96,7 +96,7 @@ onUnmounted(() => {
   margin-right: -6px;
   border: none;
   background: transparent;
-  color: #9ca3af;
+  color: var(--text-placeholder);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -105,7 +105,7 @@ onUnmounted(() => {
 }
 
 .search-clear:hover {
-  color: #6b7280;
+  color: var(--text-tertiary);
 }
 
 .search-bar input {
@@ -118,6 +118,6 @@ onUnmounted(() => {
 }
 
 .search-bar input::placeholder {
-  color: #9ca3af;
+  color: var(--text-placeholder);
 }
 </style>

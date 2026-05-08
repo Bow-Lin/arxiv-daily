@@ -113,14 +113,14 @@ onUnmounted(() => {
 
 .divider {
   width: 1px;
-  background: #e0e0e0;
+  background: var(--border-primary);
   flex-shrink: 0;
 }
 
 .resize-bar {
   width: 1px;
   cursor: col-resize;
-  background: #e0e0e0;
+  background: var(--border-primary);
   flex-shrink: 0;
   transition: background 0.15s, width 0.15s;
   position: relative;
@@ -137,7 +137,7 @@ onUnmounted(() => {
 
 .resize-bar:hover,
 .resize-bar.active {
-  background: #2563eb;
+  background: var(--color-primary);
   width: 1px;
 }
 </style>

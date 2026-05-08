@@ -30,7 +30,7 @@ const save = async () => {
 
 <style scoped>
 .network-settings {
-  background: #f9fafb;
+  background: var(--bg-secondary);
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
@@ -62,7 +62,7 @@ const save = async () => {
 .form-row input {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   font-size: 14px;
   height: 36px;

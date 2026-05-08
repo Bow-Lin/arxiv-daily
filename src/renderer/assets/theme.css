@@ -1,0 +1,128 @@
+:root {
+  /* 背景层级 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+
+  /* 边框 */
+  --border-primary: #e8e8e8;
+  --border-secondary: #d1d5db;
+
+  /* 文字 */
+  --text-primary: #1a1a1a;
+  --text-secondary: #374151;
+  --text-tertiary: #6b7280;
+  --text-placeholder: #9ca3af;
+
+  /* 语义色 */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-dim: #2563eb;
+  --color-primary-bg: #f3f4f6;
+  --color-primary-border: #bfdbfe;
+
+  --color-success: #059669;
+  --color-success-bg: #ecfdf5;
+  --color-success-border: #bbf7d0;
+
+  --color-error: #dc2626;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fecaca;
+
+  --color-danger: #c2410c;
+  --color-danger-bg: #fff7ed;
+  --color-danger-border: #fdba74;
+  --color-danger-hover: #fb923c;
+
+  --color-deep: #7c3aed;
+  --color-deep-bg: #f5f3ff;
+  --color-deep-border: #e9d5ff;
+
+  /* 组件专用 */
+  --sidebar-bg: #f9fafb;
+  --header-bg: #ffffff;
+  --card-bg: #ffffff;
+  --panel-bg: #ffffff;
+  --panel-header-bg: #f9fafb;
+  --panel-list-bg: #ffffff;
+  --card-border: #f0f0f0;
+  --card-hover: #f9fafb;
+  --tag-active-text: #2563eb;
+  --tag-bg: transparent;
+  --tag-active-bg: #f3f4f6;
+  --category-bg: #f3f4f6;
+  --input-caret: #1a1a1a;
+  --input-text: #1a1a1a;
+  --card-selected: #eff6ff;
+  --card-selected-text: #374151;
+  --nav-active: #dbeafe;
+  --badge-success: #059669;
+
+  /* 阴影 */
+  --shadow-sm: rgba(0, 0, 0, 0.06);
+  --shadow-md: rgba(0, 0, 0, 0.1);
+  --shadow-lg: rgba(0, 0, 0, 0.15);
+  --overlay: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #222222;
+  --bg-tertiary: #2a2a2a;
+
+  --border-primary: #333333;
+  --border-secondary: #444444;
+
+  --text-primary: #e5e5e5;
+  --text-secondary: #cccccc;
+  --text-tertiary: #999999;
+  --text-placeholder: #666666;
+
+  --color-primary: #3b82f6;
+  --color-primary-hover: #60a5fa;
+  --color-primary-dim: #3b82f6;
+  --color-primary-bg: #1a2a3a;
+  --color-primary-border: #2a3a4a;
+
+  --color-success: #34d399;
+  --color-success-bg: #0a2a1a;
+  --color-success-border: #1a3a2a;
+
+  --color-error: #f87171;
+  --color-error-bg: #2a0a0a;
+  --color-error-border: #3a1a1a;
+
+  --color-danger: #fb923c;
+  --color-danger-bg: #2a1a0a;
+  --color-danger-border: #3a2a1a;
+  --color-danger-hover: #fdba74;
+
+  --color-deep: #a78bfa;
+  --color-deep-bg: #1a1a2a;
+  --color-deep-border: #2a2a3a;
+
+  --sidebar-bg: #222222;
+  --header-bg: #1a1a1a;
+  --card-bg: #2a2a2a;
+  --panel-bg: #333333;
+  --panel-header-bg: #333333;
+  --panel-list-bg: #3a3a3a;
+  --card-border: #333333;
+  --card-hover: #333333;
+  --tag-active-text: #cccccc;
+  --tag-bg: transparent;
+  --tag-active-bg: #3a3a3a;
+  --category-bg: #4a4a4a;
+  --input-caret: #f0f0f0;
+  --input-text: #f0f0f0;
+  --card-selected: #2a6adb;
+  --card-selected-text: #b0b0b0;
+  --nav-active: #2a6adb;
+  --badge-success: #34d399;
+
+  --shadow-sm: rgba(0, 0, 0, 0.2);
+  --shadow-md: rgba(0, 0, 0, 0.3);
+  --shadow-lg: rgba(0, 0, 0, 0.4);
+  --overlay: rgba(0, 0, 0, 0.6);
+}

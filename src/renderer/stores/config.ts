@@ -28,6 +28,7 @@ export const useConfigStore = defineStore('config', () => {
     api_key: '',
     user_id: '',
   })
+  const theme = ref<'light' | 'dark' | 'system'>('system')
 
   // Topics
   const loadTopics = async () => {
@@ -74,15 +75,16 @@ export const useConfigStore = defineStore('config', () => {
   // Config
   const loadConfig = async () => {
     try {
-      const { llm, output, proxy, zotero } = await getConfig()
+      const { llm, output, proxy, zotero, theme: savedTheme } = await getConfig()
       llmConfig.value = llm
       outputConfig.value = output
       if (proxy) proxyConfig.value = proxy
       if (zotero) zoteroConfig.value = zotero
+      if (savedTheme) theme.value = savedTheme as 'light' | 'dark' | 'system'
     } catch (err) { console.error('Failed to load config:', err) }
   }
   const saveAll = async () => {
-    await updateConfig({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), proxy: toRaw(proxyConfig.value), zotero: toRaw(zoteroConfig.value) })
+    await updateConfig({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), proxy: toRaw(proxyConfig.value), zotero: toRaw(zoteroConfig.value), theme: theme.value })
   }
 
   // Initialize
@@ -91,7 +93,7 @@ export const useConfigStore = defineStore('config', () => {
   loadConfig()
 
   return {
-    topics, categories, llmConfig, outputConfig, proxyConfig, zoteroConfig,
+    topics, categories, llmConfig, outputConfig, proxyConfig, zoteroConfig, theme,
     loadTopics, addTopic, updateTopic, deleteTopic,
     loadCategories, addCategory, updateCategory, deleteCategory,
     loadConfig, saveAll,

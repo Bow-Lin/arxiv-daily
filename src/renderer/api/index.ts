@@ -53,7 +53,7 @@ export const deleteTopic = async (topicId: number): Promise<void> => {
   return window.api.deleteTopic(topicId)
 }
 
-export const getConfig = async (): Promise<{ llm: LLMConfig; output: OutputConfig; proxy: ProxyConfig; zotero?: ZoteroConfig }> => {
+export const getConfig = async (): Promise<{ llm: LLMConfig; output: OutputConfig; proxy: ProxyConfig; zotero?: ZoteroConfig; theme?: string }> => {
   return window.api.getConfig()
 }
 
@@ -62,6 +62,7 @@ export const updateConfig = async (config: {
   output: OutputConfig
   proxy: ProxyConfig
   zotero?: ZoteroConfig
+  theme?: string
 }): Promise<void> => {
   return window.api.updateConfig(config)
 }
