@@ -96,6 +96,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
         new_count: 0,
         total_count: 0,
         failed_categories: [],
+        failed_details: [],
         error: message,
       };
     }

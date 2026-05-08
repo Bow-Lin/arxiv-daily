@@ -99,11 +99,17 @@ export const deleteCategory = async (categoryId: number): Promise<void> => {
 }
 
 // Fetch API
+export interface FailedCategory {
+  category: string
+  error: string
+}
+
 export interface FetchPapersResult {
   success: boolean
   new_count: number
   existing_count: number
   failed_categories: string[]
+  failed_details: FailedCategory[]
 }
 
 export const fetchPapers = async (categories?: string[]): Promise<FetchPapersResult> => {
@@ -126,6 +132,7 @@ export interface FetchPapersByDateResult {
   new_count: number
   total_count: number
   failed_categories: string[]
+  failed_details: FailedCategory[]
   error?: string
 }
 

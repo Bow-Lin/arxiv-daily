@@ -2,11 +2,17 @@ import type { Database as SqlJsDatabase } from 'sql.js';
 import { fetchFromApi, savePapers, todayStr, daysAgoStr } from '../services/arxiv-api';
 import { refreshAllPaperTopics, loadProxyConfig } from './config';
 
+export interface FailedCategory {
+  category: string;
+  error: string;
+}
+
 export interface FetchPapersResult {
   success: boolean;
   new_count: number;
   existing_count: number;
   failed_categories: string[];
+  failed_details: FailedCategory[];
 }
 
 export interface FetchPapersByDateParams {
@@ -21,6 +27,7 @@ export interface FetchPapersByDateResult {
   new_count: number;
   total_count: number;
   failed_categories: string[];
+  failed_details: FailedCategory[];
   error?: string;
 }
 
@@ -31,9 +38,10 @@ async function fetchPapersInRange(
   startDate: string,
   endDate: string,
   categories: string[],
-): Promise<{ new_count: number; total_count: number; failed_categories: string[] }> {
+): Promise<{ new_count: number; total_count: number; failed_categories: string[]; failed_details: FailedCategory[] }> {
   let totalNew = 0;
   const failed: string[] = [];
+  const failedDetails: FailedCategory[] = [];
   const allApiIds = new Set<string>();
   const proxyConfig = loadProxyConfig(db);
 
@@ -49,6 +57,7 @@ async function fetchPapersInRange(
       const errMsg = e instanceof Error ? e.message : String(e);
       console.error(`[fetch] Failed for ${category}:`, errMsg);
       failed.push(category);
+      failedDetails.push({ category, error: errMsg });
     }
   }
 
@@ -59,7 +68,7 @@ async function fetchPapersInRange(
     console.error('[fetch] Failed to refresh topics:', e);
   }
 
-  return { new_count: totalNew, total_count: allApiIds.size, failed_categories: failed };
+  return { new_count: totalNew, total_count: allApiIds.size, failed_categories: failed, failed_details: failedDetails };
 }
 
 function resolveCategories(db: SqlJsDatabase, categories: string[]): string[] {
@@ -77,18 +86,19 @@ function resolveCategories(db: SqlJsDatabase, categories: string[]): string[] {
 export async function fetchPapers(db: SqlJsDatabase, categories: string[]): Promise<FetchPapersResult> {
   const cats = resolveCategories(db, categories);
   if (cats.length === 0) {
-    return { success: false, new_count: 0, existing_count: 0, failed_categories: [] };
+    return { success: false, new_count: 0, existing_count: 0, failed_categories: [], failed_details: [] };
   }
 
   const startDate = daysAgoStr(1);
   const endDate = todayStr();
-  const { new_count, total_count, failed_categories } = await fetchPapersInRange(db, startDate, endDate, cats);
+  const { new_count, total_count, failed_categories, failed_details } = await fetchPapersInRange(db, startDate, endDate, cats);
 
   return {
     success: true,
     new_count: new_count,
     existing_count: total_count - new_count,
     failed_categories: failed_categories,
+    failed_details: failed_details,
   };
 }
 
@@ -98,18 +108,19 @@ export async function fetchPapers(db: SqlJsDatabase, categories: string[]): Prom
 export async function fetchPapersThisWeek(db: SqlJsDatabase, categories: string[]): Promise<FetchPapersResult> {
   const cats = resolveCategories(db, categories);
   if (cats.length === 0) {
-    return { success: false, new_count: 0, existing_count: 0, failed_categories: [] };
+    return { success: false, new_count: 0, existing_count: 0, failed_categories: [], failed_details: [] };
   }
 
   const startDate = daysAgoStr(6);
   const endDate = todayStr();
-  const { new_count, total_count, failed_categories } = await fetchPapersInRange(db, startDate, endDate, cats);
+  const { new_count, total_count, failed_categories, failed_details } = await fetchPapersInRange(db, startDate, endDate, cats);
 
   return {
     success: true,
     new_count: new_count,
     existing_count: total_count - new_count,
     failed_categories: failed_categories,
+    failed_details: failed_details,
   };
 }
 
@@ -124,10 +135,10 @@ export async function fetchPapersByDate(
   const cats = params.categories || [];
 
   if (cats.length === 0) {
-    return { success: false, local_count: 0, new_count: 0, total_count: 0, failed_categories: [] };
+    return { success: false, local_count: 0, new_count: 0, total_count: 0, failed_categories: [], failed_details: [] };
   }
 
-  const { new_count, total_count, failed_categories } = await fetchPapersInRange(db, startDate, endDate, cats);
+  const { new_count, total_count, failed_categories, failed_details } = await fetchPapersInRange(db, startDate, endDate, cats);
 
   return {
     success: true,
@@ -135,5 +146,6 @@ export async function fetchPapersByDate(
     new_count,
     total_count,
     failed_categories: failed_categories,
+    failed_details: failed_details,
   };
 }
