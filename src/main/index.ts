@@ -28,9 +28,13 @@ function createWindow(): BrowserWindow {
   });
 
   if (app.isPackaged) {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html')).catch((err) => {
+      console.error('Failed to load app:', err);
+    });
   } else {
-    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.loadURL('http://localhost:5173').catch((err) => {
+      console.error('Failed to load dev server (is Vite running?):', err);
+    });
   }
 
   mainWindow.on('closed', () => {
@@ -74,6 +78,8 @@ app.whenReady().then(async () => {
       createWindow();
     }
   });
+}).catch((err) => {
+  console.error('App initialization failed:', err);
 });
 
 app.on('window-all-closed', () => {
