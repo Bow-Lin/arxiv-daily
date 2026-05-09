@@ -16,19 +16,25 @@ let nextId = 0
 export const useToastStore = defineStore('toast', () => {
   const toasts = ref<Toast[]>([])
 
+  function resetToastId(): void {
+    const maxId = toasts.value.reduce((max, t) => Math.max(max, t.id), -1)
+    nextId = maxId + 1
+  }
+
   function show(
     title: string,
     body: string,
     type: 'success' | 'info' | 'error' = 'info',
     details?: string,
     duration?: number,
-  ) {
+  ): number {
     const id = nextId++
     const actualDuration = duration ?? (type === 'error' ? 0 : (details ? 8000 : 3000))
     toasts.value.push({ id, title, body, type, removing: false, details })
     if (actualDuration > 0) {
       setTimeout(() => remove(id), actualDuration)
     }
+    return id
   }
 
   function remove(id: number) {
@@ -40,5 +46,5 @@ export const useToastStore = defineStore('toast', () => {
     }, 250)
   }
 
-  return { toasts, show, remove }
+  return { toasts, show, remove, resetToastId } as const
 })
