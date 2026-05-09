@@ -60,7 +60,7 @@ export function getUnanalyzedPapers(db: SqlJsDatabase): { id: string; title: str
     `SELECT p.id, p.title
      FROM papers p
      LEFT JOIN analyses a ON p.id = a.paper_id
-     WHERE a.analysis IS NULL OR a.analysis = ''
+     WHERE (a.analysis IS NULL OR a.analysis = '')
        AND p.pdf_url IS NOT NULL AND p.pdf_url != ''
      ORDER BY p.published_date DESC`,
   );
