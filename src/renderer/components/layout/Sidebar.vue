@@ -1,22 +1,46 @@
 <template>
   <aside class="sidebar">
     <div class="actions-col">
-      <button class="btn-fetch" :disabled="progressStore.isFetching" @click="doFetch('today')">
-        <Download :size="13" />
-        最新论文
-      </button>
-      <button class="btn-fetch" :disabled="progressStore.isFetching" @click="doFetch('week')">
-        <Download :size="13" />
-        本周论文
-      </button>
-      <button class="btn-fetch" :disabled="progressStore.isFetching" @click="openDateDialog">
-        <Download :size="13" />
-        指定日期
-      </button>
-      <button class="btn-fetch" :disabled="progressStore.isFetching" @click="analyzePapersAction">
-        <PenLine :size="13" />
-        总结论文
-      </button>
+      <div class="menu-wrapper">
+        <button class="btn-fetch" :disabled="progressStore.isFetching" @click="toggleMenu('fetch')">
+          <Download :size="13" />
+          获取论文
+        </button>
+        <div v-if="activeMenu === 'fetch'" class="dropdown-menu">
+          <div class="dropdown-menu-item" @click="activeMenu = null; doFetch('today')">
+            <Download :size="13" />
+            获取最新论文
+          </div>
+          <div class="dropdown-menu-item" @click="activeMenu = null; doFetch('week')">
+            <Download :size="13" />
+            获取最近一周
+          </div>
+          <div class="dropdown-menu-item" @click="activeMenu = null; openDateDialog()">
+            <Download :size="13" />
+            获取指定日期
+          </div>
+        </div>
+      </div>
+      <div class="menu-wrapper">
+        <button class="btn-fetch" :disabled="progressStore.isFetching" @click="toggleMenu('summarize')">
+          <PenLine :size="13" />
+          总结论文
+        </button>
+        <div v-if="activeMenu === 'summarize'" class="dropdown-menu">
+          <div class="dropdown-menu-item" @click="activeMenu = null; analyzePapersAction()">
+            <PenLine :size="13" />
+            总结关注话题
+          </div>
+          <div class="dropdown-menu-item" @click="activeMenu = null; summarizeCurrentPapers()">
+            <PenLine :size="13" />
+            总结当前列表
+          </div>
+          <div class="dropdown-menu-item" @click="activeMenu = null; summarizeSelectedPapers()">
+            <PenLine :size="13" />
+            总结选中论文
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="section-title">日期列表</div>
@@ -221,7 +245,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Download, PenLine, Settings, ListChecks } from 'lucide-vue-next'
-import { fetchPapers, fetchPapersThisWeek, fetchPapersByDate, getUnanalyzedPaperIds, listCategories } from '../../api'
+import { fetchPapers, fetchPapersThisWeek, fetchPapersByDate, getUnanalyzedPaperIds, listCategories, listPapers } from '../../api'
 import type { Category } from '../../types/config'
 import { usePapersStore } from '../../stores/papers'
 import { useProgressStore } from '../../stores/progress'
@@ -241,6 +265,11 @@ const toastStore = useToastStore()
 let fetchingToastId = -1
 
 const showQueuePanel = ref(false)
+const activeMenu = ref<string | null>(null)
+
+const toggleMenu = (name: string) => {
+  activeMenu.value = activeMenu.value === name ? null : name
+}
 const queueBtnRef = ref<HTMLElement | null>(null)
 const summaryCollapsed = ref(true)
 const analysisCollapsed = ref(true)
@@ -269,8 +298,9 @@ const stopCurrentAnalysis = () => queueStore.cancelCurrent()
 const stopCurrentPaperAnalysis = () => analysisQueueStore.cancelCurrent()
 
 function onDocumentClick(e: MouseEvent) {
-  if (!showQueuePanel.value) return
   const target = e.target as HTMLElement
+  if (activeMenu.value && !target.closest('.menu-wrapper')) activeMenu.value = null
+  if (!showQueuePanel.value) return
   if (target.closest('.queue-panel') || target.closest('.btn-queue')) return
   showQueuePanel.value = false
 }
@@ -453,6 +483,45 @@ const analyzePapersAction = async () => {
     toastStore.show('获取失败', '获取未分析论文失败', 'error', msg)
   }
 }
+
+const summarizeCurrentPapers = async () => {
+  try {
+    const params = {
+      fetchDate: papersStore.selectedDate || undefined,
+      topicId: papersStore.selectedTopicId || undefined,
+      search: papersStore.searchQuery || undefined,
+    }
+    const first = await listPapers({ ...params, pageSize: 100 })
+    const items = first.items.map(p => ({ id: p.id, title: p.title }))
+    const totalPages = Math.ceil(first.total / 100)
+    for (let page = 2; page <= totalPages; page++) {
+      const result = await listPapers({ ...params, page, pageSize: 100 })
+      items.push(...result.items.map(p => ({ id: p.id, title: p.title })))
+    }
+    const added = queueStore.enqueue(items)
+    if (added === 0) {
+      toastStore.show('提示', '当前论文已在队列中', 'info')
+    }
+  } catch (err: unknown) {
+    toastStore.show('获取失败', '获取当前论文失败', 'error', extractErrorMessage(err))
+  }
+}
+
+const summarizeSelectedPapers = () => {
+  const ids = papersStore.selectedPaperIds
+  if (ids.length === 0) {
+    toastStore.show('提示', '请先选择论文', 'info')
+    return
+  }
+  const items = ids.map(id => {
+    const paper = papersStore.papers.find(p => p.id === id)
+    return { id, title: paper?.title || id }
+  })
+  const added = queueStore.enqueue(items)
+  if (added === 0) {
+    toastStore.show('提示', '选中论文已在队列中', 'info')
+  }
+}
 </script>
 
 <style scoped>
@@ -495,6 +564,41 @@ const analyzePapersAction = async () => {
 .btn-fetch:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.menu-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--shadow-md);
+  z-index: 50;
+  padding: 6px;
+}
+
+.dropdown-menu-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-menu-item:hover {
+  background: var(--border-primary);
 }
 
 .dates-section {

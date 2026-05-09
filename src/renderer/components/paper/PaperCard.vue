@@ -1,5 +1,5 @@
 <template>
-  <div class="paper-card" :class="{ selected: isSelected }" @click="selectPaper">
+  <div class="paper-card" :class="{ selected: isPaperSelected }" @click="onCardClick">
     <div class="card-header">
       <h3 class="paper-title">{{ paper.title }}</h3>
       <span class="paper-date">{{ formatDate(paper.updated_date) }}</span>
@@ -32,9 +32,17 @@ const emit = defineEmits<{
 }>()
 
 const papersStore = usePapersStore()
-const isSelected = computed(() => papersStore.selectedPaperId === props.paper.id)
+const isPaperSelected = computed(() => papersStore.selectedPaperIds.includes(props.paper.id))
 
-const selectPaper = () => emit('select', props.paper.id)
+const onCardClick = (e: MouseEvent) => {
+  if (e.metaKey || e.ctrlKey) {
+    papersStore.toggleSelection(props.paper.id)
+  } else {
+    papersStore.clearSelection()
+    papersStore.selectedPaperIds.push(props.paper.id)
+    emit('select', props.paper.id)
+  }
+}
 
 const formatAuthors = (authors: string[]) => {
   if (authors.length <= 2) return authors.join(', ')

@@ -33,7 +33,7 @@ export const useAnalysisQueueStore = defineStore('analysisQueue', () => {
           const idx = papersStore.papers.findIndex(p => p.id === item.id)
           if (idx !== -1) {
             papersStore.papers.splice(idx, 1, updated)
-          } else if (papersStore.selectedPaperId === item.id) {
+          } else if (papersStore.selectedPaperIds.includes(item.id)) {
             papersStore.selectPaper(item.id)
           }
         } catch {

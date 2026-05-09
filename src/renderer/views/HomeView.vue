@@ -11,14 +11,14 @@
       </MainContent>
       <div class="resize-bar" @mousedown="startResize"></div>
       <div class="panel-wrapper detail-wrapper" ref="detailRef">
-        <PaperDetail :paper="papersStore.selectedPaper" @close="papersStore.clearSelection" />
+        <PaperDetail :paper="detailPaper" @close="papersStore.clearSelection" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import AppHeader from '../components/layout/AppHeader.vue'
 import Sidebar from '../components/layout/Sidebar.vue'
 import MainContent from '../components/layout/MainContent.vue'
@@ -28,6 +28,14 @@ import { usePapersStore } from '../stores/papers'
 
 const papersStore = usePapersStore()
 const detailRef = ref<HTMLElement | null>(null)
+
+const detailPaper = computed(() => {
+  if (papersStore.selectedPaperIds.length === 1) {
+    const id = papersStore.selectedPaperIds[0]
+    return papersStore.papers.find(p => p.id === id) || null
+  }
+  return null
+})
 
 const handleSelect = (paperId: string) => {
   papersStore.selectPaper(paperId)

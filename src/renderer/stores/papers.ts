@@ -10,7 +10,7 @@ export const usePapersStore = defineStore('papers', () => {
   // State
   const papers = ref<PaperWithAnalysis[]>([])
   const fetchDates = ref<FetchDate[]>([])
-  const selectedPaperId = ref<string | null>(null)
+  const selectedPaperIds = ref<string[]>([])
   const selectedDate = ref<string | null>(null) // null = "全部"
   const selectedTopicId = ref<number | null>(null) // null = "全部"
   const searchQuery = ref('')
@@ -26,12 +26,6 @@ export const usePapersStore = defineStore('papers', () => {
   const totalCount = computed(() =>
     fetchDates.value.reduce((sum, d) => sum + d.count, 0)
   )
-
-  // Getters
-  const selectedPaper = computed(() => {
-    if (!selectedPaperId.value) return null
-    return papers.value.find(p => p.id === selectedPaperId.value) || null
-  })
 
   // Request serial counter to discard stale responses
   let loadRequestId = 0
@@ -91,18 +85,18 @@ export const usePapersStore = defineStore('papers', () => {
   const selectDate = async (date: string | null) => {
     selectedDate.value = date
     selectedTopicId.value = null
+    clearSelection()
     await loadPapers()
   }
 
   const selectTopic = async (topicId: number | null) => {
     if (selectedTopicId.value === topicId) return
     selectedTopicId.value = topicId
+    clearSelection()
     await loadPapers()
   }
 
   const selectPaper = async (id: string) => {
-    selectedPaperId.value = id
-
     try {
       const detail = await getPaperDetail(id)
       const idx = papers.value.findIndex(p => p.id === id)
@@ -112,24 +106,33 @@ export const usePapersStore = defineStore('papers', () => {
     }
   }
 
+  const toggleSelection = (id: string) => {
+    const idx = selectedPaperIds.value.indexOf(id)
+    if (idx >= 0) {
+      selectedPaperIds.value.splice(idx, 1)
+    } else {
+      selectedPaperIds.value.push(id)
+    }
+  }
+
   const clearSelection = () => {
-    selectedPaperId.value = null
+    selectedPaperIds.value = []
   }
 
   const clearPapers = () => {
     papers.value = []
-    selectedPaperId.value = null
+    selectedPaperIds.value = []
     pagination.value.total = 0
     pagination.value.page = 1
   }
 
   const analyzeCurrentPaper = async () => {
-    if (!selectedPaperId.value) return
+    const id = selectedPaperIds.value[0]
+    if (!id) return
     try {
-      await apiSummarizePaper(selectedPaperId.value)
-      // Reload just the current paper's data instead of the full list
-      const updated = await getPaperDetail(selectedPaperId.value)
-      const idx = papers.value.findIndex(p => p.id === selectedPaperId.value)
+      await apiSummarizePaper(id)
+      const updated = await getPaperDetail(id)
+      const idx = papers.value.findIndex(p => p.id === id)
       if (idx !== -1) papers.value[idx] = updated
     } catch (err) {
       console.error('Failed to analyze paper:', err)
@@ -143,9 +146,10 @@ export const usePapersStore = defineStore('papers', () => {
 
   return {
     papers, fetchDates, selectedDate, selectedTopicId, searchQuery,
-    selectedPaperId, selectedPaper,
+    selectedPaperIds,
     loading, error, pagination, totalCount,
     loadFetchDates, loadPapers, selectDate, selectTopic,
-    selectPaper, clearSelection, clearPapers, analyzeCurrentPaper,
+    selectPaper, clearPapers, analyzeCurrentPaper,
+    toggleSelection, clearSelection,
   }
 })

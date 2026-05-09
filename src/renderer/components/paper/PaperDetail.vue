@@ -1,6 +1,10 @@
 <template>
   <div class="detail-panel">
-    <div v-if="paper" class="detail-content">
+    <div v-if="selectedCount > 1" class="empty-state">
+      <p>{{ selectedCount }}篇文章被选中</p>
+    </div>
+
+    <div v-else-if="paper" class="detail-content">
       <h2 class="detail-title">{{ paper.title }}</h2>
 
       <div class="detail-meta">
@@ -109,6 +113,8 @@ const analysisQueueStore = useAnalysisQueueStore()
 const downloadStore = useDownloadQueueStore()
 const toastStore = useToastStore()
 const papersStore = usePapersStore()
+
+const selectedCount = computed(() => papersStore.selectedPaperIds.length)
 
 const activeTab = ref<'abstract' | 'summary' | 'analysis'>('abstract')
 const isPdfCached = ref(false)
