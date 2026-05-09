@@ -61,7 +61,7 @@ export const useConfigStore = defineStore('config', () => {
   async function triggerRebuild() {
     const toastStore = useToastStore()
     if (_rebuildToastId === null) {
-      _rebuildToastId = toastStore.show('重建索引', '正在重建论文主题索引...', 'info', undefined, 0)
+      _rebuildToastId = toastStore.show('重建索引', '正在重建论文主题索引...', 'info', undefined, 0) as number
     }
     if (_rebuilding) {
       // Already rebuilding, just mark that another run is needed
