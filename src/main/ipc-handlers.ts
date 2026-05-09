@@ -26,34 +26,47 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
   const sqlDb = db.getDb();
 
   // Paper (read-only)
-  handle('list-papers', async (_event, params) => paperCmd.listPapers(sqlDb, params));
-  handle('get-paper-detail', async (_event, paperId) => paperCmd.getPaperDetail(sqlDb, paperId));
+  handle('list-papers', async (params) => paperCmd.listPapers(sqlDb, params));
+  handle('get-paper-detail', async (paperId) => paperCmd.getPaperDetail(sqlDb, paperId));
   handle('list-fetch-dates', async () => paperCmd.listFetchDates(sqlDb));
   handle('list-topic-counts', async () => paperCmd.listTopicCounts(sqlDb));
 
   // Config
   handle('list-topics', async () => configCmd.listTopics(sqlDb));
-  handle('save-topic', async (_event, topic) => {
-    const result = configCmd.saveTopic(sqlDb, topic);
-    await db.save();
-    return result;
+  handle('save-topic', async (topic) => {
+    try {
+      const result = configCmd.saveTopic(sqlDb, topic);
+      await db.save();
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('UNIQUE constraint failed')) {
+        return { error: '主题名称已存在' };
+      }
+      throw err;
+    }
   });
-  handle('delete-topic', async (_event, topicId) => {
+  handle('delete-topic', async (topicId) => {
     configCmd.deleteTopic(sqlDb, topicId);
     await db.save();
   });
+  handle('rebuild-paper-topics', async () => {
+    const count = configCmd.rebuildPaperTopics(sqlDb);
+    await db.save();
+    return { success: true, count };
+  });
   handle('get-config', async () => configCmd.getConfig(sqlDb));
-  handle('update-config', async (_event, config) => {
+  handle('update-config', async (config) => {
     configCmd.updateConfig(sqlDb, config.llm, config.output, config.zotero, config.theme);
     await db.save();
   });
   handle('list-categories', async () => configCmd.listCategories(sqlDb));
-  handle('save-category', async (_event, category) => {
+  handle('save-category', async (category) => {
     const result = configCmd.saveCategory(sqlDb, category);
     await db.save();
     return result;
   });
-  handle('delete-category', async (_event, categoryId) => {
+  handle('delete-category', async (categoryId) => {
     configCmd.deleteCategory(sqlDb, categoryId);
     await db.save();
   });
@@ -67,14 +80,15 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     await db.save();
     return result;
   });
+  handle('test-zotero-connection', async () => configCmd.testZoteroConnection(sqlDb));
 
   // Fetch
-  handle('fetch-papers', async (_event, categories) => {
+  handle('fetch-papers', async (categories) => {
     const result = await fetchCmd.fetchPapers(sqlDb, categories || []);
     await db.save();
     return result;
   });
-  handle('fetch-papers-this-week', async (_event, categories) => {
+  handle('fetch-papers-this-week', async (categories) => {
     const result = await fetchCmd.fetchPapersThisWeek(sqlDb, categories || []);
     await db.save();
     return result;
@@ -127,7 +141,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
   handle('test-llm-connection', async () => summaryCmd.testLLMConnection(sqlDb));
 
   // PDF download
-  handle('download-pdf', async (_event, paperId) => {
+  handle('download-pdf', async (paperId) => {
     const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
     if (results.length === 0 || results[0].values.length === 0) {
       throw new Error(`Paper ${paperId} not found`);
@@ -142,7 +156,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     return filePath;
   });
 
-  handle('open-pdf', async (_event, paperId) => {
+  handle('open-pdf', async (paperId) => {
     const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
     if (results.length === 0 || results[0].values.length === 0) return;
     const pdfUrl = results[0].values[0][0] as string;
@@ -151,7 +165,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     await shell.openPath(localPath);
   });
 
-  handle('is-pdf-cached', async (_event, paperId) => {
+  handle('is-pdf-cached', async (paperId) => {
     const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
     if (results.length === 0 || results[0].values.length === 0) return false;
     const pdfUrl = results[0].values[0][0] as string;
@@ -165,7 +179,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     }
   });
 
-  handle('delete-pdf', async (_event, paperId) => {
+  handle('delete-pdf', async (paperId) => {
     const results = sqlDb.exec('SELECT pdf_url FROM papers WHERE id = ?', [paperId]);
     if (results.length === 0 || results[0].values.length === 0) return;
     const pdfUrl = results[0].values[0][0] as string;
@@ -176,12 +190,12 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     } catch { /* ignore */ }
   });
 
-  handle('delete-summary', async (_event, paperId) => {
+  handle('delete-summary', async (paperId) => {
     sqlDb.exec('UPDATE analyses SET summary = \'\' WHERE paper_id = ?', [paperId]);
     await db.save();
   });
 
-  handle('delete-analysis', async (_event, paperId) => {
+  handle('delete-analysis', async (paperId) => {
     sqlDb.exec('UPDATE analyses SET analysis = \'\' WHERE paper_id = ?', [paperId]);
     await db.save();
   });
@@ -206,7 +220,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
       summaryCmd.setAnalysisAbortController(null);
     }
   });
-  handle('get-paper-analysis', async (_event, paperId) => analysisCmd.getPaperAnalysis(sqlDb, paperId));
+  handle('get-paper-analysis', async (paperId) => analysisCmd.getPaperAnalysis(sqlDb, paperId));
   handle('get-unanalyzed-analysis-papers', async () => analysisCmd.getUnanalyzedPapers(sqlDb));
   handle('stop-analysis', async () => summaryCmd.stopAnalysis());
 
@@ -219,7 +233,7 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     return fetchCollections(config.user_id, config.api_key);
   });
 
-  handle('export-paper-to-zotero', async (_event, paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string) => {
+  handle('export-paper-to-zotero', async (paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string) => {
     const config = loadZoteroConfig(sqlDb);
     if (!config.api_key || !config.user_id) {
       throw new Error('Zotero API Key 和 User ID 未配置');

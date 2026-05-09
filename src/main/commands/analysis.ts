@@ -2,7 +2,7 @@ import type { BrowserWindow } from 'electron';
 import type { Database as SqlJsDatabase } from 'sql.js';
 import { filterPaperTopics } from '../services/filter';
 import { LLMClient } from '../services/llm-client';
-import { loadLLMConfig, refreshAllPaperTopics } from './config';
+import { loadLLMConfig, rebuildPaperTopics } from './config';
 import { BASE_SQL, rowToPaper, execResultToPaperRows } from './paper-shared';
 
 export interface SummaryProgress {
@@ -131,7 +131,7 @@ export async function summarizeAllUnanalyzed(db: SqlJsDatabase, mainWindow: Brow
       return { success: true, analyzed: 0, message: 'No topics configured, skip analysis' };
     }
 
-    refreshAllPaperTopics(db);
+    rebuildPaperTopics(db);
 
     const llmConfig = loadLLMConfig(db);
     const topicNames = topics.map(t => t.name);

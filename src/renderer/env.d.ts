@@ -67,8 +67,9 @@ interface ElectronAPI {
 
   // Config
   listTopics: () => Promise<Topic[]>
-  saveTopic: (topic: { id?: number; name: string; keywords: string[]; enabled: boolean }) => Promise<Topic>
+  saveTopic: (topic: { id?: number; name: string; keywords: string[]; enabled: boolean }) => Promise<Topic | { error: string }>
   deleteTopic: (topicId: number) => Promise<void>
+  rebuildPaperTopics: () => Promise<{ success: boolean; count: number }>
   getConfig: () => Promise<{ llm: LLMConfig; output: OutputConfig; zotero?: ZoteroConfig; theme?: string }>
   updateConfig: (config: { llm: LLMConfig; output: OutputConfig; zotero?: ZoteroConfig; theme?: string }) => Promise<void>
   listCategories: () => Promise<Category[]>
@@ -98,6 +99,7 @@ interface ElectronAPI {
   stopSummary: () => Promise<{ success: boolean }>
   getUnanalyzedPaperIds: () => Promise<{ id: string; title: string }[]>
   testLLMConnection: () => Promise<{ success: boolean; message: string }>
+  testZoteroConnection: () => Promise<{ success: boolean; message: string }>
 
   // Analysis (full paper)
   analyzeFullPaper: (id: string) => Promise<{ success: boolean; cancelled?: boolean }>

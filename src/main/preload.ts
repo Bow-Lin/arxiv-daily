@@ -11,6 +11,7 @@ const api = {
   listTopics: () => ipcRenderer.invoke('list-topics'),
   saveTopic: (topic: unknown) => ipcRenderer.invoke('save-topic', topic),
   deleteTopic: (id: number) => ipcRenderer.invoke('delete-topic', id),
+  rebuildPaperTopics: () => ipcRenderer.invoke('rebuild-paper-topics'),
   getConfig: () => ipcRenderer.invoke('get-config'),
   updateConfig: (config: unknown) => ipcRenderer.invoke('update-config', config),
   listCategories: () => ipcRenderer.invoke('list-categories'),
@@ -30,6 +31,7 @@ const api = {
   stopSummary: () => ipcRenderer.invoke('stop-summary'),
   getUnanalyzedPaperIds: () => ipcRenderer.invoke('get-unanalyzed-paper-ids'),
   testLLMConnection: () => ipcRenderer.invoke('test-llm-connection'),
+  testZoteroConnection: () => ipcRenderer.invoke('test-zotero-connection'),
 
   // PDF download
   downloadPdf: (id: string) => ipcRenderer.invoke('download-pdf', id),

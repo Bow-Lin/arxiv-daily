@@ -35,20 +35,35 @@ const configStore = useConfigStore()
 const isAdding = ref(false)
 const newCategoryName = ref('')
 
-const toggleCategory = (cat: Category) => {
-  configStore.updateCategory(cat.id, { enabled: !cat.enabled })
+const toggleCategory = async (cat: Category) => {
+  try {
+    await configStore.updateCategory(cat.id, { enabled: !cat.enabled })
+  } catch (err) {
+    console.error('Failed to update category:', err)
+    alert('保存失败: ' + (err instanceof Error ? err.message : String(err)))
+  }
 }
 
-const deleteCategory = (catId: number) => {
-  configStore.deleteCategory(catId)
+const deleteCategory = async (catId: number) => {
+  try {
+    await configStore.deleteCategory(catId)
+  } catch (err) {
+    console.error('Failed to delete category:', err)
+    alert('删除失败: ' + (err instanceof Error ? err.message : String(err)))
+  }
 }
 
-const saveNew = () => {
+const saveNew = async () => {
   const name = newCategoryName.value.trim()
   if (!name) return
-  configStore.addCategory(name)
-  isAdding.value = false
-  newCategoryName.value = ''
+  try {
+    await configStore.addCategory(name)
+    isAdding.value = false
+    newCategoryName.value = ''
+  } catch (err) {
+    console.error('Failed to add category:', err)
+    alert('保存失败: ' + (err instanceof Error ? err.message : String(err)))
+  }
 }
 </script>
 

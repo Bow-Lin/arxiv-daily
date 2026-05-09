@@ -15,8 +15,8 @@
             v-for="option in themeOptions"
             :key="option.value"
             class="theme-btn"
-            :class="{ active: pendingTheme === option.value }"
-            @click="pendingTheme = option.value"
+            :class="{ active: configStore.theme === option.value }"
+            @click="configStore.theme = option.value"
           >
             {{ option.label }}
           </button>
@@ -27,10 +27,6 @@
       <TopicEditor />
       <LLMSettings />
       <ZoteroSettings />
-
-      <div class="config-actions">
-        <button class="btn-primary" @click="saveAll">保存设置</button>
-      </div>
 
       <div class="danger-zone">
         <h3 class="danger-title">危险操作</h3>
@@ -75,15 +71,15 @@ const configStore = useConfigStore()
 const papersStore = usePapersStore()
 const toastStore = useToastStore()
 const confirmClearData = ref(false)
+const confirmClearAnalyses = ref(false)
+let confirmDataTimer: number | null = null
+let confirmAnalysesTimer: number | null = null
+
 const themeOptions: { value: 'light' | 'dark' | 'system'; label: string }[] = [
   { value: 'light', label: '浅色' },
   { value: 'dark', label: '深色' },
   { value: 'system', label: '跟随系统' },
 ]
-const pendingTheme = ref<'light' | 'dark' | 'system'>(configStore.theme)
-const confirmClearAnalyses = ref(false)
-let confirmDataTimer: number | null = null
-let confirmAnalysesTimer: number | null = null
 
 const clearAllTimers = () => {
   if (confirmDataTimer) { clearTimeout(confirmDataTimer); confirmDataTimer = null }
@@ -95,17 +91,6 @@ onUnmounted(() => {
 })
 
 const goBack = () => router.push('/')
-
-const saveAll = async () => {
-  try {
-    configStore.theme = pendingTheme.value
-    await configStore.saveAll()
-    toastStore.show('保存成功', '设置已保存', 'success')
-  } catch (err) {
-    console.error('Failed to save config:', err)
-    alert('保存失败: ' + (err instanceof Error ? err.message : String(err)))
-  }
-}
 
 const handleClearData = async () => {
   if (!confirmClearData.value) {
@@ -199,26 +184,6 @@ const handleClearAnalyses = async () => {
   max-width: 700px;
   margin: 0 auto;
   padding: 24px;
-}
-
-.config-actions {
-  margin-top: 24px;
-  text-align: center;
-}
-
-.btn-primary {
-  padding: 12px 32px;
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  background: var(--color-primary-hover);
 }
 
 .danger-zone {

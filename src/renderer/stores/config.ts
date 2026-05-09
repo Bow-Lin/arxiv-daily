@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
-import { ref, computed, toRaw } from 'vue'
+import { ref, watch, toRaw } from 'vue'
 import type { Topic, LLMConfig, OutputConfig, ZoteroConfig, Category } from '../types/config'
+import { useToastStore } from './toast'
 import {
   listTopics, saveTopic as apiSaveTopic, deleteTopic as apiDeleteTopic,
   getConfig, updateConfig,
   listCategories, saveCategory as apiSaveCategory, deleteCategory as apiDeleteCategory,
+  rebuildPaperTopics,
 } from '../api'
 
 export const useConfigStore = defineStore('config', () => {
@@ -26,57 +28,130 @@ export const useConfigStore = defineStore('config', () => {
   })
   const theme = ref<'light' | 'dark' | 'system'>('system')
 
-  // Snapshot of loaded state for change detection
-  let _loadedTopicsJson = '[]'
-  let _loadedCategoriesJson = '[]'
-  let _loadedConfigJson = ''
+  // Rebuild index (debounced + queued)
+  let _rebuildToastId: number | null = null
+  let _rebuildTimer: number | null = null
+  let _rebuilding = false
+  let _rebuildNeeded = false
 
-  const _pendingDeletedTopicIds = new Set<number>()
-  let _nextTempId = -1
-
-  // Topics (local-only, persisted on saveAll)
-  const addTopic = (topic: Omit<Topic, 'id'>): Topic => {
-    const newTopic: Topic = { ...topic, id: _nextTempId-- }
-    topics.value.push(newTopic)
-    return newTopic
-  }
-  const updateTopic = (id: number, topic: Partial<Topic>) => {
-    const existing = topics.value.find(t => t.id === id)
-    if (!existing) return
-    Object.assign(existing, topic)
-  }
-  const deleteTopic = (id: number) => {
-    if (id > 0) _pendingDeletedTopicIds.add(id)
-    topics.value = topics.value.filter(t => t.id !== id)
-  }
-
-  // Categories (local-only, persisted on saveAll)
-  const _pendingDeletedCategoryIds = new Set<number>()
-  let _nextTempCatId = -1
-
-  const addCategory = (name: string): Category => {
-    const newCat: Category = { id: _nextTempCatId--, name, enabled: true }
-    categories.value.push(newCat)
-    return newCat
-  }
-  const updateCategory = (id: number, data: Partial<Category>) => {
-    const existing = categories.value.find(c => c.id === id)
-    if (!existing) return
-    Object.assign(existing, data)
-  }
-  const deleteCategory = (id: number) => {
-    if (id > 0) _pendingDeletedCategoryIds.add(id)
-    categories.value = categories.value.filter(c => c.id !== id)
+  async function _doRebuild() {
+    _rebuilding = true
+    try {
+      await new Promise(r => setTimeout(r, 10000))
+      await rebuildPaperTopics()
+    } catch (err) {
+      console.error('Failed to rebuild paper topics:', err)
+    } finally {
+      _rebuilding = false
+      // If more changes happened during rebuild, run again
+      if (_rebuildNeeded) {
+        _rebuildNeeded = false
+        _doRebuild()
+      } else {
+        const toastStore = useToastStore()
+        if (_rebuildToastId !== null) {
+          toastStore.remove(_rebuildToastId)
+          _rebuildToastId = null
+        }
+        toastStore.show('重建完成', '论文主题索引已更新', 'success')
+      }
+    }
   }
 
-  // Change detection
-  const hasChanges = computed(() => {
-    return JSON.stringify(toRaw(topics.value)) !== _loadedTopicsJson
-      || JSON.stringify(toRaw(categories.value)) !== _loadedCategoriesJson
-      || JSON.stringify({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), zotero: toRaw(zoteroConfig.value), theme: theme.value }) !== _loadedConfigJson
-  })
+  async function triggerRebuild() {
+    const toastStore = useToastStore()
+    if (_rebuildToastId === null) {
+      _rebuildToastId = toastStore.show('重建索引', '正在重建论文主题索引...', 'info', undefined, 0)
+    }
+    if (_rebuilding) {
+      // Already rebuilding, just mark that another run is needed
+      _rebuildNeeded = true
+      return
+    }
+    // Debounce
+    if (_rebuildTimer) clearTimeout(_rebuildTimer)
+    _rebuildTimer = window.setTimeout(() => {
+      _rebuildTimer = null
+      _doRebuild()
+    }, 300)
+  }
 
-  // Config
+  // Topics (immediate save)
+  const addTopic = async (topic: Omit<Topic, 'id'>): Promise<boolean> => {
+    const result = await apiSaveTopic({ ...topic, keywords: [...topic.keywords] })
+    if (result && 'error' in result) {
+      useToastStore().show('保存失败', result.error, 'error')
+      return false
+    }
+    await loadTopics()
+    triggerRebuild()
+    return true
+  }
+
+  const updateTopic = async (id: number, topic: Partial<Topic>): Promise<boolean> => {
+    const payload = { id, name: '', keywords: [], enabled: true, ...topic }
+    payload.keywords = topic.keywords ? [...topic.keywords] : []
+    const result = await apiSaveTopic(payload)
+    if (result && 'error' in result) {
+      useToastStore().show('保存失败', result.error, 'error')
+      return false
+    }
+    await loadTopics()
+    triggerRebuild()
+    return true
+  }
+
+  const deleteTopic = async (id: number): Promise<void> => {
+    await apiDeleteTopic(id)
+    await loadTopics()
+    triggerRebuild()
+  }
+
+  // Categories (immediate save)
+  const addCategory = async (name: string): Promise<void> => {
+    await apiSaveCategory({ name, enabled: true })
+    await loadCategories()
+  }
+
+  const updateCategory = async (id: number, data: Partial<Category>): Promise<void> => {
+    const cat = categories.value.find(c => c.id === id)
+    if (!cat) return
+    await apiSaveCategory({ id, name: cat.name, enabled: cat.enabled, ...data })
+    await loadCategories()
+  }
+
+  const deleteCategory = async (id: number): Promise<void> => {
+    await apiDeleteCategory(id)
+    await loadCategories()
+  }
+
+  // Debounce helper
+  function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
+    let timer: number | null = null
+    return ((...args: any[]) => {
+      if (timer) clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        timer = null
+        fn(...args)
+      }, ms)
+    }) as unknown as T
+  }
+
+  // Debounced config save (LLM + Zotero + theme)
+  const _persistConfig = debounce(async () => {
+    try {
+      await updateConfig({
+        llm: toRaw(llmConfig.value),
+        output: toRaw(outputConfig.value),
+        zotero: toRaw(zoteroConfig.value),
+        theme: theme.value,
+      })
+    } catch (err) {
+      console.error('Failed to persist config:', err)
+    }
+  }, 300)
+
+  // Initialize
   const loadConfig = async () => {
     try {
       const { llm, output, zotero, theme: savedTheme } = await getConfig()
@@ -87,78 +162,33 @@ export const useConfigStore = defineStore('config', () => {
     } catch (err) { console.error('Failed to load config:', err) }
   }
 
-  const saveLLM = async () => {
-    await updateConfig({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), zotero: toRaw(zoteroConfig.value), theme: theme.value })
-  }
-
-  const saveAll = async () => {
-    // 1. Persist deleted topics
-    for (const id of _pendingDeletedTopicIds) {
-      await apiDeleteTopic(id)
-    }
-    _pendingDeletedTopicIds.clear()
-
-    // 2. Persist topics (new and updated)
-    for (let i = 0; i < topics.value.length; i++) {
-      const topic = toRaw(topics.value[i])
-      if (topic.id < 0) {
-        const saved = await apiSaveTopic({ name: topic.name, keywords: [...topic.keywords], enabled: topic.enabled })
-        topics.value[i] = saved
-      } else {
-        await apiSaveTopic({ ...topic, keywords: [...topic.keywords] })
-      }
-    }
-
-    // 3. Persist deleted categories
-    for (const id of _pendingDeletedCategoryIds) {
-      await apiDeleteCategory(id)
-    }
-    _pendingDeletedCategoryIds.clear()
-
-    // 4. Persist categories (new and updated)
-    for (let i = 0; i < categories.value.length; i++) {
-      const cat = toRaw(categories.value[i])
-      if (cat.id < 0) {
-        const saved = await apiSaveCategory({ name: cat.name, enabled: cat.enabled })
-        categories.value[i] = saved
-      } else {
-        await apiSaveCategory({ ...cat })
-      }
-    }
-
-    // 5. Persist config (LLM, Zotero, theme)
-    await updateConfig({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), zotero: toRaw(zoteroConfig.value), theme: theme.value })
-
-    // Update snapshots
-    _loadedTopicsJson = JSON.stringify(toRaw(topics.value))
-    _loadedCategoriesJson = JSON.stringify(toRaw(categories.value))
-    _loadedConfigJson = JSON.stringify({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), zotero: toRaw(zoteroConfig.value), theme: theme.value })
-  }
-
-  // Initialize
   const loadTopics = async () => {
     try {
       topics.value = await listTopics()
-      _loadedTopicsJson = JSON.stringify(toRaw(topics.value))
     } catch (err) { console.error('Failed to load topics:', err) }
   }
+
   const loadCategories = async () => {
     try {
       categories.value = await listCategories()
-      _loadedCategoriesJson = JSON.stringify(toRaw(categories.value))
     } catch (err) { console.error('Failed to load categories:', err) }
   }
 
   loadTopics()
   loadCategories()
   loadConfig().then(() => {
-    _loadedConfigJson = JSON.stringify({ llm: toRaw(llmConfig.value), output: toRaw(outputConfig.value), zotero: toRaw(zoteroConfig.value), theme: theme.value })
+    // Start auto-save watch only after initial load to avoid saving defaults
+    watch(
+      [llmConfig, zoteroConfig, theme],
+      () => _persistConfig(),
+      { deep: true },
+    )
   })
 
   return {
     topics, categories, llmConfig, outputConfig, zoteroConfig, theme,
     addTopic, updateTopic, deleteTopic,
     addCategory, updateCategory, deleteCategory,
-    hasChanges, saveLLM, saveAll,
+    loadTopics, loadCategories, loadConfig,
   }
 })

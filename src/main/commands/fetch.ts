@@ -1,6 +1,6 @@
 import type { Database as SqlJsDatabase } from 'sql.js';
 import { fetchFromApi, savePapers, todayStr, daysAgoStr } from '../services/arxiv-api';
-import { refreshAllPaperTopics } from './config';
+import { rebuildPaperTopics } from './config';
 
 export interface FailedCategory {
   category: string;
@@ -62,7 +62,7 @@ async function fetchPapersInRange(
 
   // Refresh topic matching for all papers
   try {
-    refreshAllPaperTopics(db);
+    rebuildPaperTopics(db);
   } catch (e) {
     console.error('[fetch] Failed to refresh topics:', e);
   }

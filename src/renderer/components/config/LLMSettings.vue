@@ -54,7 +54,6 @@ const testConnection = async () => {
   testing.value = true
   testResult.value = null
   try {
-    await configStore.saveLLM()
     const result = await testLLMConnection()
     testResult.value = { success: result.success, message: result.message || '连接成功' }
   } catch (err: unknown) {

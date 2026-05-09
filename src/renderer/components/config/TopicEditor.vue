@@ -70,13 +70,13 @@ const startEdit = (topic: Topic) => {
   keywordsInput.value = topic.keywords.join(', ')
 }
 
-const saveEdit = (id: number) => {
+const saveEdit = async (id: number) => {
   if (!editForm.value.name.trim()) return
-  configStore.updateTopic(id, {
+  const ok = await configStore.updateTopic(id, {
     name: editForm.value.name,
     keywords: keywordsInput.value.split(',').map(k => k.trim()).filter(Boolean),
   })
-  editingId.value = null
+  if (ok) editingId.value = null
 }
 
 const cancelEdit = () => {
@@ -89,22 +89,27 @@ const startAdd = () => {
   newKeywords.value = ''
 }
 
-const saveNew = () => {
+const saveNew = async () => {
   if (!newTopic.value.name.trim()) return
-  configStore.addTopic({
+  const ok = await configStore.addTopic({
     name: newTopic.value.name,
     keywords: newKeywords.value.split(',').map(k => k.trim()).filter(Boolean),
     enabled: true,
   })
-  isAdding.value = false
+  if (ok) isAdding.value = false
 }
 
 const cancelAdd = () => {
   isAdding.value = false
 }
 
-const deleteTopic = (id: number) => {
-  configStore.deleteTopic(id)
+const deleteTopic = async (id: number) => {
+  try {
+    await configStore.deleteTopic(id)
+  } catch (err) {
+    console.error('Failed to delete topic:', err)
+    alert('删除失败: ' + (err instanceof Error ? err.message : String(err)))
+  }
 }
 </script>
 

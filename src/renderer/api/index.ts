@@ -45,12 +45,16 @@ export const saveTopic = async (topic: {
   name: string
   keywords: string[]
   enabled: boolean
-}): Promise<Topic> => {
+}): Promise<Topic | { error: string }> => {
   return window.api.saveTopic(topic)
 }
 
 export const deleteTopic = async (topicId: number): Promise<void> => {
   return window.api.deleteTopic(topicId)
+}
+
+export const rebuildPaperTopics = async (): Promise<{ success: boolean; count: number }> => {
+  return window.api.rebuildPaperTopics()
 }
 
 export const getConfig = async (): Promise<{ llm: LLMConfig; output: OutputConfig; zotero?: ZoteroConfig; theme?: string }> => {
@@ -163,6 +167,10 @@ export const getUnanalyzedPaperIds = async (): Promise<{ id: string; title: stri
 
 export const testLLMConnection = async (): Promise<{ success: boolean; message: string }> => {
   return window.api.testLLMConnection()
+}
+
+export const testZoteroConnection = async (): Promise<{ success: boolean; message: string }> => {
+  return window.api.testZoteroConnection()
 }
 
 // Analysis API (full paper)

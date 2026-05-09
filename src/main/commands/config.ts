@@ -87,9 +87,10 @@ export function loadZoteroConfig(db: SqlJsDatabase): ZoteroConfig {
 }
 
 /**
- * Refresh all papers' relevance_topics based on current enabled topics.
+ * Rebuild all papers' relevance_topics based on current enabled topics.
+ * Called asynchronously via IPC after topic changes.
  */
-export function refreshAllPaperTopics(db: SqlJsDatabase): number {
+export function rebuildPaperTopics(db: SqlJsDatabase): number {
   // Load enabled topics
   const topicRows = db.exec('SELECT id, name, keywords, enabled FROM topics WHERE enabled = TRUE');
   const topics: Topic[] = topicRows.length > 0
@@ -137,7 +138,7 @@ export function listTopics(db: SqlJsDatabase): Topic[] {
 }
 
 /**
- * Save a topic (insert or update). Refreshes paper topics after.
+ * Save a topic (insert or update).
  */
 export function saveTopic(db: SqlJsDatabase, topic: {
   id?: number;
@@ -149,7 +150,6 @@ export function saveTopic(db: SqlJsDatabase, topic: {
   let id: number;
 
   if (topic.id != null) {
-    // Update existing
     db.run('UPDATE topics SET name = ?, keywords = ?, enabled = ? WHERE id = ?',
       [topic.name, keywordsJson, topic.enabled ? 1 : 0, topic.id]);
     if (db.getRowsModified() === 0) {
@@ -157,37 +157,22 @@ export function saveTopic(db: SqlJsDatabase, topic: {
     }
     id = topic.id;
   } else {
-    // Insert new
     db.run('INSERT INTO topics (name, keywords, enabled) VALUES (?, ?, ?)',
       [topic.name, keywordsJson, topic.enabled ? 1 : 0]);
-    // Get the last inserted rowid
     const lastId = db.exec('SELECT last_insert_rowid()');
     id = lastId[0].values[0][0] as number;
-  }
-
-  // Refresh paper topics after topic change
-  try {
-    refreshAllPaperTopics(db);
-  } catch (e) {
-    console.error('Failed to refresh paper topics after topic change:', e);
   }
 
   return { id, name: topic.name, keywords: topic.keywords, enabled: topic.enabled };
 }
 
 /**
- * Delete a topic. Refreshes paper topics after.
+ * Delete a topic.
  */
 export function deleteTopic(db: SqlJsDatabase, topicId: number): void {
   db.run('DELETE FROM topics WHERE id = ?', [topicId]);
   if (db.getRowsModified() === 0) {
     throw new Error(`Topic ${topicId} not found`);
-  }
-  // Refresh paper topics after topic change
-  try {
-    refreshAllPaperTopics(db);
-  } catch (e) {
-    console.error('Failed to refresh paper topics after topic change:', e);
   }
 }
 
@@ -353,4 +338,22 @@ export function clearData(db: SqlJsDatabase): { success: boolean } {
 export function clearAnalyses(db: SqlJsDatabase): { success: boolean } {
   db.run('DELETE FROM analyses');
   return { success: true };
+}
+
+/**
+ * Test Zotero connection by fetching collections.
+ */
+export async function testZoteroConnection(db: SqlJsDatabase): Promise<{ success: boolean; message: string }> {
+  const config = loadZoteroConfig(db);
+  if (!config.api_key || !config.user_id) {
+    return { success: false, message: 'Zotero API Key 和 User ID 未配置' };
+  }
+  try {
+    const { fetchCollections } = await import('../services/zotero-client');
+    const collections = await fetchCollections(config.user_id, config.api_key);
+    return { success: true, message: `连接成功，共 ${collections.length} 个分类` };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, message: msg };
+  }
 }
