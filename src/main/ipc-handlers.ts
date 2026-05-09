@@ -5,8 +5,10 @@ import type { Database } from './database/connection';
 import * as paperCmd from './commands/paper';
 import * as configCmd from './commands/config';
 import * as fetchCmd from './commands/fetch';
-import * as summaryCmd from './commands/analysis';
-import * as analysisCmd from './services/paper-analyzer';
+import * as summaryCmd from './commands/summary';
+import * as analysisCmd from './commands/analysis';
+import * as llmCmd from './commands/llm';
+import * as paperAnalyzerCmd from './services/paper-analyzer';
 import { ensurePdfDownloaded, getPdfPath } from './services/pdf-extractor';
 import { fetchCollections, createItem, createChildItems, type ChildItemPayload } from './services/zotero-client';
 import { loadZoteroConfig } from './commands/config';
@@ -137,8 +139,8 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
     return result;
   });
   handle('stop-summary', async () => summaryCmd.stopSummary());
-  handle('get-unanalyzed-paper-ids', async () => summaryCmd.getUnanalyzedPapers(sqlDb));
-  handle('test-llm-connection', async () => summaryCmd.testLLMConnection(sqlDb));
+  handle('get-unanalyzed-paper-ids', async () => summaryCmd.getUnsummarizedPapers(sqlDb));
+  handle('test-llm-connection', async () => llmCmd.testLLMConnection(sqlDb));
 
   // PDF download
   handle('download-pdf', async (paperId) => {
@@ -203,9 +205,9 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
   // Analysis (full paper)
   ipcMain.handle('analyze-full-paper', async (_event, paperId) => {
     const controller = new AbortController();
-    summaryCmd.setAnalysisAbortController(controller);
+    analysisCmd.setAnalysisAbortController(controller);
     try {
-      const result = await analysisCmd.analyzeFullPaper(sqlDb, paperId, controller.signal, app.getPath('userData'), (phase) => {
+      const result = await paperAnalyzerCmd.analyzeFullPaper(sqlDb, paperId, controller.signal, app.getPath('userData'), (phase) => {
         mainWindow.webContents.send('analysis-progress', phase);
       });
       await db.save();
@@ -217,12 +219,12 @@ export function registerIpcHandlers(db: Database, mainWindow: BrowserWindow): vo
       console.error(`[Analysis] FAILED for paper ${paperId}:`, err);
       throw err;
     } finally {
-      summaryCmd.setAnalysisAbortController(null);
+      analysisCmd.setAnalysisAbortController(null);
     }
   });
-  handle('get-paper-analysis', async (paperId) => analysisCmd.getPaperAnalysis(sqlDb, paperId));
-  handle('get-unanalyzed-analysis-papers', async () => analysisCmd.getUnanalyzedPapers(sqlDb));
-  handle('stop-analysis', async () => summaryCmd.stopAnalysis());
+  handle('get-paper-analysis', async (paperId) => paperAnalyzerCmd.getPaperAnalysis(sqlDb, paperId));
+  handle('get-unanalyzed-analysis-papers', async () => paperAnalyzerCmd.getUnanalyzedPapers(sqlDb));
+  handle('stop-analysis', async () => analysisCmd.stopAnalysis());
 
   // Zotero
   handle('list-zotero-collections', async () => {

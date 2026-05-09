@@ -37,7 +37,6 @@ export const useConfigStore = defineStore('config', () => {
   async function _doRebuild() {
     _rebuilding = true
     try {
-      await new Promise(r => setTimeout(r, 10000))
       await rebuildPaperTopics()
     } catch (err) {
       console.error('Failed to rebuild paper topics:', err)

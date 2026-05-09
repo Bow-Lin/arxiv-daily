@@ -27,3 +27,8 @@ export function execResultToPaperRows(results: { columns: string[]; values: unkn
     return obj;
   });
 }
+
+export function truncateTitle(title: string): string {
+  if (title.length <= 60) return title;
+  return `${Array.from(title).slice(0, 60).join('')}...`;
+}

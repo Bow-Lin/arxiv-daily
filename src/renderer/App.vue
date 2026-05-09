@@ -219,7 +219,8 @@ body {
 
 .toast-details {
   padding: 8px 12px;
-  background: var(--bg-tertiary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   font-size: 12px;
   color: var(--text-secondary);

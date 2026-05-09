@@ -225,8 +225,8 @@ import { fetchPapers, fetchPapersThisWeek, fetchPapersByDate, getUnanalyzedPaper
 import type { Category } from '../../types/config'
 import { usePapersStore } from '../../stores/papers'
 import { useProgressStore } from '../../stores/progress'
-import { useSummaryQueueStore } from '../../stores/analysisQueue'
-import { useAnalysisQueueStore } from '../../stores/paperAnalysisQueue'
+import { useSummaryQueueStore } from '../../stores/summaryQueue'
+import { useAnalysisQueueStore } from '../../stores/analysisQueue'
 import { useDownloadQueueStore } from '../../stores/downloadQueue'
 import { useToastStore } from '../../stores/toast'
 import { extractErrorMessage } from '../../utils/format'
@@ -238,6 +238,7 @@ const queueStore = useSummaryQueueStore()
 const analysisQueueStore = useAnalysisQueueStore()
 const downloadStore = useDownloadQueueStore()
 const toastStore = useToastStore()
+let fetchingToastId = -1
 
 const showQueuePanel = ref(false)
 const queueBtnRef = ref<HTMLElement | null>(null)
@@ -285,6 +286,30 @@ const goToConfig = () => router.push('/config')
 
 // ── Fetch logic ──────────────────────────────────────
 
+function showFetchResult(newCount: number, existingCount: number, failedCategories: string[], failedDetails: { category: string; error: string }[], label?: string) {
+  const hasFailures = failedCategories.length > 0
+  const totalCount = newCount + existingCount
+
+  if (newCount > 0) {
+    const details = `成功抓取 ${totalCount} 篇，本地已有 ${existingCount} 篇`
+    toastStore.show('获取完成', `新增 ${newCount} 篇论文`, 'success', details)
+  } else if (totalCount > 0) {
+    toastStore.show('获取完成', '无新论文', 'info', `已抓取 ${totalCount} 篇，均为本地已有`)
+  } else if (!hasFailures) {
+    toastStore.show('获取完成', label ? `${label}无新论文` : '未找到相关论文', 'info')
+  }
+
+  if (hasFailures) {
+    const summary = totalCount > 0
+      ? `${failedCategories.length} 个类别获取失败`
+      : '全部类别获取失败'
+    const details = failedDetails
+      .map(d => `[${d.category}] ${d.error}`)
+      .join('\n')
+    toastStore.show('获取异常', summary, 'error', details)
+  }
+}
+
 async function doFetch(mode: 'today' | 'week') {
   if (progressStore.isFetching) return
 
@@ -295,6 +320,9 @@ async function doFetch(mode: 'today' | 'week') {
   progressStore.progressTotal = 0
   progressStore.currentPaper = ''
 
+  toastStore.resetToastId()
+  fetchingToastId = toastStore.show('抓取中', `正在获取${label}论文...`, 'info', undefined, 0)
+
   try {
     const apiFn = mode === 'today' ? fetchPapers : fetchPapersThisWeek
     const result = await apiFn()
@@ -304,30 +332,13 @@ async function doFetch(mode: 'today' | 'week') {
         papersStore.loadFetchDates(),
         papersStore.loadPapers(),
       ])
-
-      const total = result.new_count + result.existing_count
-      const hasFailures = result.failed_categories.length > 0
-
-      if (total > 0) {
-        toastStore.show('获取完成', `获取${label}论文 ${total} 篇（新增 ${result.new_count} 篇）`, 'success')
-      } else if (!hasFailures) {
-        toastStore.show('获取完成', `${label}无新论文`, 'info')
-      }
-
-      if (hasFailures) {
-        const summary = total > 0
-          ? `${result.failed_categories.length} 个类别获取失败`
-          : `全部类别获取失败`
-        const details = result.failed_details
-          .map(d => `[${d.category}] ${d.error}`)
-          .join('\n')
-        toastStore.show('获取异常', summary, 'error', details)
-      }
+      showFetchResult(result.new_count, result.existing_count, result.failed_categories, result.failed_details, label)
     }
   } catch (err: unknown) {
     const msg = extractErrorMessage(err)
     toastStore.show('获取失败', `获取${label}论文失败`, 'error', msg)
   } finally {
+    if (fetchingToastId >= 0) { toastStore.remove(fetchingToastId); fetchingToastId = -1 }
     progressStore.isFetching = false
     progressStore.progressPhase = ''
     progressStore.currentPaper = ''
@@ -400,6 +411,11 @@ const fetchByDateAction = async () => {
   progressStore.progressTotal = 0
   progressStore.currentPaper = ''
 
+  toastStore.resetToastId()
+  fetchingToastId = toastStore.show('抓取中', '正在按日期获取论文...', 'info', undefined, 0)
+
+  showDateDialog.value = false
+
   try {
     const params = {
       startDate: dateForm.startDate,
@@ -412,34 +428,12 @@ const fetchByDateAction = async () => {
       papersStore.loadFetchDates(),
       papersStore.loadPapers(),
     ])
-
-    const hasFailures = result.failed_categories.length > 0
-    const hasResults = result.total_count > 0
-
-    if (hasResults) {
-      let msg = `共 ${result.total_count} 篇论文`
-      if (result.local_count > 0) msg += `（本地已有 ${result.local_count} 篇`
-      if (result.new_count > 0) msg += `${result.local_count > 0 ? '，' : ''}新增 ${result.new_count} 篇`
-      if (result.local_count > 0 || result.new_count > 0) msg += '）'
-      toastStore.show('获取完成', msg, 'success')
-    } else if (!hasFailures) {
-      toastStore.show('获取完成', '无新论文', 'info')
-    }
-
-    if (hasFailures) {
-      const summary = hasResults
-        ? `${result.failed_categories.length} 个类别获取失败`
-        : `全部类别获取失败`
-      const details = result.failed_details
-        .map(d => `[${d.category}] ${d.error}`)
-        .join('\n')
-      toastStore.show('部分失败', summary, 'error', details)
-    }
-    showDateDialog.value = false
+    showFetchResult(result.new_count, result.local_count, result.failed_categories, result.failed_details)
   } catch (err: unknown) {
     const msg = extractErrorMessage(err)
     toastStore.show('获取失败', '按日期获取失败', 'error', msg)
   } finally {
+    if (fetchingToastId >= 0) { toastStore.remove(fetchingToastId); fetchingToastId = -1 }
     isDateFetching.value = false
     progressStore.isFetching = false
     progressStore.progressPhase = ''
