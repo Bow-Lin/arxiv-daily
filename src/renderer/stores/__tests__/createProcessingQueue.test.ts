@@ -101,7 +101,7 @@ describe('createProcessingQueue', () => {
       const idsDuringProcessing: (string | null)[] = [];
       const testQueue = createProcessingQueue({
         name: 'test',
-        processItem: async (item) => {
+        processItem: async () => {
           idsDuringProcessing.push(testQueue.currentPaperId.value);
         },
         stopApi: vi.fn().mockResolvedValue({ success: true }),
@@ -125,12 +125,9 @@ describe('createProcessingQueue', () => {
 
     it('does not start if already running', () => {
       // Call processQueue directly - should return immediately if running
-      let ranOnce = false;
       const testQueue = createProcessingQueue({
         name: 'test',
-        processItem: async () => {
-          ranOnce = true;
-        },
+        processItem: async () => {},
         stopApi: vi.fn().mockResolvedValue({ success: true }),
       });
       // Manually start processing
