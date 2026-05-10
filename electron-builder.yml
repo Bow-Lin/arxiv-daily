@@ -1,5 +1,5 @@
-appId: com.arxiv-daily
-productName: arXiv Daily
+appId: com.sciphant
+productName: SciPhant
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
 directories:
@@ -8,6 +8,9 @@ directories:
 files:
   - dist/**/*
   - node_modules/sql.js/**/*
+extraResources:
+  - from: resources/conference_papers.db
+    to: conference_papers.db
 mac:
   icon: resources/icon.icns
   category: public.app-category.productivity

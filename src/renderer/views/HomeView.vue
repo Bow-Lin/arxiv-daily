@@ -11,7 +11,7 @@
       </MainContent>
       <div class="resize-bar" @mousedown="startResize"></div>
       <div class="panel-wrapper detail-wrapper" ref="detailRef">
-        <PaperDetail :paper="detailPaper" @close="papersStore.clearSelection" />
+        <PaperDetail :paper="detailPaper" :selected-count="selectedCount" @close="clearSelection" />
       </div>
     </div>
   </div>
@@ -25,11 +25,28 @@ import MainContent from '../components/layout/MainContent.vue'
 import PaperList from '../components/paper/PaperList.vue'
 import PaperDetail from '../components/paper/PaperDetail.vue'
 import { usePapersStore } from '../stores/papers'
+import { useConferencePapersStore } from '../stores/conference-papers'
+import { useModeStore } from '../stores/mode'
 
 const papersStore = usePapersStore()
+const conferenceStore = useConferencePapersStore()
+const modeStore = useModeStore()
 const detailRef = ref<HTMLElement | null>(null)
 
+const selectedCount = computed(() => {
+  return modeStore.isConference
+    ? conferenceStore.selectedPaperIds.length
+    : papersStore.selectedPaperIds.length
+})
+
 const detailPaper = computed(() => {
+  if (modeStore.isConference) {
+    if (conferenceStore.selectedPaperIds.length === 1) {
+      const id = conferenceStore.selectedPaperIds[0]
+      return conferenceStore.papers.find(p => p.id === id) || null
+    }
+    return null
+  }
   if (papersStore.selectedPaperIds.length === 1) {
     const id = papersStore.selectedPaperIds[0]
     return papersStore.papers.find(p => p.id === id) || null
@@ -38,7 +55,19 @@ const detailPaper = computed(() => {
 })
 
 const handleSelect = (paperId: string) => {
-  papersStore.selectPaper(paperId)
+  if (modeStore.isConference) {
+    conferenceStore.selectPaper(paperId)
+  } else {
+    papersStore.selectPaper(paperId)
+  }
+}
+
+const clearSelection = () => {
+  if (modeStore.isConference) {
+    conferenceStore.clearSelection()
+  } else {
+    papersStore.clearSelection()
+  }
 }
 
 let startX = 0

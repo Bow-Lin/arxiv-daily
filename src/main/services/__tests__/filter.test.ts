@@ -31,21 +31,21 @@ describe('filterPaperTopics', () => {
     { id: 3, name: 'Unused', keywords: ['unused'], enabled: true },
   ];
 
-  it('returns matching topic names', () => {
+  it('returns matching topic IDs', () => {
     const result = filterPaperTopics('Advances in AI', 'We study artificial intelligence.', topics);
-    expect(result).toContain('AI');
-    expect(result).not.toContain('Crypto');
-    expect(result).not.toContain('Unused');
+    expect(result).toContain(1);
+    expect(result).not.toContain(2);
+    expect(result).not.toContain(3);
   });
 
   it('matches keywords in both title and abstract', () => {
     const result = filterPaperTopics('Title', 'Abstract mentions blockchain.', topics);
-    expect(result).toContain('Crypto');
+    expect(result).toContain(2);
   });
 
   it('returns multiple matches', () => {
     const result = filterPaperTopics('AI and crypto', 'Abstract.', topics);
-    expect(result).toEqual(['AI', 'Crypto']);
+    expect(result).toEqual([1, 2]);
   });
 
   it('returns empty array when nothing matches', () => {

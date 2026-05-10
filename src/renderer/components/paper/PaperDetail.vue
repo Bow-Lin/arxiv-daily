@@ -8,21 +8,37 @@
       <h2 class="detail-title">{{ paper.title }}</h2>
 
       <div class="detail-meta">
-        <p><strong>作者:</strong> {{ paper.authors.join(', ') }}</p>
-        <p><strong>分类:</strong> {{ paper.categories.join(', ') }}</p>
-        <p><strong>更新时间:</strong> {{ formatDateFull(paper.updated_date) }}</p>
-        <p><strong>arXiv ID:</strong> {{ paper.id }}</p>
+        <p><strong>作者：</strong>{{ paper.authors.join(', ') }}</p>
+        <template v-if="!isConference">
+          <p><strong>分类：</strong>{{ (paper as PaperWithAnalysis).categories.join(', ') }}</p>
+          <p><strong>更新时间：</strong>{{ formatDateFull((paper as PaperWithAnalysis).updated_date) }}</p>
+          <p><strong>arXiv ID：</strong>{{ paper.id }}</p>
+        </template>
+        <template v-else>
+          <p><strong>会议：</strong>{{ (paper as ConferencePaper).short_name }} {{ (paper as ConferencePaper).year }}</p>
+          <p v-if="(paper as ConferencePaper).track"><strong>类型：</strong>{{ (paper as ConferencePaper).track }}</p>
+          <p v-if="(paper as ConferencePaper).pages"><strong>页码：</strong>{{ (paper as ConferencePaper).pages }}</p>
+        </template>
       </div>
 
       <div class="detail-actions">
-        <a :href="paper.url" target="_blank" rel="noopener noreferrer" class="action-link action-pdf">打开 arXiv</a>
-        <button class="action-link action-pdf" :disabled="isPdfDownloading || isPdfQueued" @click="downloadPdf">
+        <!-- arxiv: open arXiv link -->
+        <template v-if="!isConference">
+          <a :href="(paper as PaperWithAnalysis).url" target="_blank" rel="noopener noreferrer" class="action-link action-pdf">arXiv</a>
+        </template>
+        <!-- conference: open detail page + arxiv link -->
+        <template v-else>
+          <a v-if="(paper as ConferencePaper).detail_url" :href="(paper as ConferencePaper).detail_url!" target="_blank" rel="noopener noreferrer" class="action-link action-pdf">论文主页</a>
+          <a v-if="(paper as ConferencePaper).arxiv_url" :href="(paper as ConferencePaper).arxiv_url!" target="_blank" rel="noopener noreferrer" class="action-link action-pdf">arXiv</a>
+        </template>
+
+        <button class="action-link action-pdf" :disabled="isPdfDownloading || isPdfQueued || pdfDisabled" @click="downloadPdf">
           {{ pdfButtonText }}
         </button>
         <button class="action-link action-analyze" :disabled="isInQueue" @click="addToQueue">
           {{ isCurrentPaper ? '总结中...' : isInQueue ? '排队中...' : '论文总结' }}
         </button>
-        <button class="action-link action-deep" :disabled="isAnalysisInQueue" @click="addToAnalysisQueue">
+        <button class="action-link action-deep" :disabled="isAnalysisInQueue || analysisDisabled" @click="addToAnalysisQueue">
           {{ isAnalysisCurrentPaper ? '分析中...' : isAnalysisInQueue ? '排队中...' : '论文分析' }}
         </button>
         <div class="zotero-export-wrapper">
@@ -65,12 +81,13 @@
         <button class="tab-item" :class="{ active: activeTab === 'abstract' }" @click="activeTab = 'abstract'">论文摘要</button>
         <button class="tab-item" :class="{ active: activeTab === 'summary' }" @click="activeTab = 'summary'">论文总结</button>
         <button class="tab-item" :class="{ active: activeTab === 'analysis' }" @click="activeTab = 'analysis'">论文分析</button>
+        <button v-if="isConference && (paper as ConferencePaper).bibtex" class="tab-item" :class="{ active: activeTab === 'bibtex' }" @click="activeTab = 'bibtex'">BibTeX</button>
       </div>
 
       <!-- Tab content -->
       <div class="detail-section">
         <div v-show="activeTab === 'abstract'" class="section-body">
-          <div class="tex-content" v-html="renderLatex(paper.abstract_text)"></div>
+          <div class="tex-content" v-html="renderLatex(abstractText)"></div>
         </div>
         <div v-show="activeTab === 'summary'" class="section-body">
           <div v-if="!isAnalyzed" class="empty-hint">暂无论文总结，请先执行论文总结</div>
@@ -79,6 +96,10 @@
         <div v-show="activeTab === 'analysis'" class="section-body">
           <div v-if="!paper.analysis" class="empty-hint">暂无论文分析，请先执行论文分析</div>
           <div v-else class="tex-content" v-html="renderMarkdown(paper.analysis)"></div>
+        </div>
+        <div v-if="isConference && (paper as ConferencePaper).bibtex" v-show="activeTab === 'bibtex'" class="section-body">
+          <pre class="bibtex-code" @click="copyBibtex">{{ (paper as ConferencePaper).bibtex }}</pre>
+          <button class="copy-bibtex-btn" @click="copyBibtex">复制 BibTeX</button>
         </div>
       </div>
     </div>
@@ -96,27 +117,34 @@ import { isAnalyzed as checkAnalyzed } from '../../types/paper'
 import { useSummaryQueueStore } from '../../stores/summaryQueue'
 import { useAnalysisQueueStore } from '../../stores/analysisQueue'
 import { useDownloadQueueStore } from '../../stores/downloadQueue'
+import { useModeStore } from '../../stores/mode'
+import { useConferencePapersStore } from '../../stores/conference-papers'
 import { useToastStore } from '../../stores/toast'
 import { usePapersStore } from '../../stores/papers'
 import { renderLatex, renderMarkdown, renderMarkdownOnly } from '../../utils/katex'
 import { formatDateFull, extractErrorMessage } from '../../utils/format'
-import { listZoteroCollections, exportPaperToZotero, openPdf } from '../../api'
+import { listZoteroCollections, exportPaperToZotero, conferenceExportToZotero, openPdf } from '../../api'
 import type { ZoteroCollection } from '../../api'
 import 'katex/dist/katex.min.css'
 
 const props = defineProps<{
-  paper: PaperWithAnalysis | null
+  paper: PaperWithAnalysis | ConferencePaper | null
+  selectedCount?: number
 }>()
 
 const queueStore = useSummaryQueueStore()
 const analysisQueueStore = useAnalysisQueueStore()
 const downloadStore = useDownloadQueueStore()
+const modeStore = useModeStore()
+const conferenceStore = useConferencePapersStore()
 const toastStore = useToastStore()
 const papersStore = usePapersStore()
 
-const selectedCount = computed(() => papersStore.selectedPaperIds.length)
+const isConference = computed(() => modeStore.isConference)
 
-const activeTab = ref<'abstract' | 'summary' | 'analysis'>('abstract')
+const selectedCount = computed(() => props.selectedCount ?? 0)
+
+const activeTab = ref<'abstract' | 'summary' | 'analysis' | 'bibtex'>('abstract')
 const isPdfCached = ref(false)
 const showZoteroMenu = ref(false)
 const collections = ref<ZoteroCollection[]>([])
@@ -128,35 +156,48 @@ const showMoreMenu = ref(false)
 const hasSummary = computed(() => !!(props.paper?.summary && props.paper.summary.length > 0))
 const hasAnalysis = computed(() => !!(props.paper?.analysis && props.paper.analysis.length > 0))
 
+const abstractText = computed(() => {
+  if (!props.paper) return ''
+  if (isConference.value) return (props.paper as ConferencePaper).abstract || ''
+  return (props.paper as PaperWithAnalysis).abstract_text || ''
+})
+
+// Conference papers may not have PDF
+const pdfDisabled = computed(() => {
+  if (!isConference.value || !props.paper) return false
+  return !(props.paper as ConferencePaper).pdf_url
+})
+
+const analysisDisabled = computed(() => {
+  if (!isConference.value || !props.paper) return false
+  return !(props.paper as ConferencePaper).pdf_url
+})
+
 watch(() => props.paper?.id, async () => {
   if (!props.paper) { isPdfCached.value = false; return }
-  try { isPdfCached.value = await window.api.isPdfCached(props.paper.id) } catch { isPdfCached.value = false }
+  try {
+    isPdfCached.value = isConference.value
+      ? await window.api.conferenceIsPdfCached(props.paper.id)
+      : await window.api.isPdfCached(props.paper.id)
+  } catch { isPdfCached.value = false }
 }, { immediate: true })
 
-// Watch download store to update cached status when download completes
+// Watch download store to update cached status
 watch(() => downloadStore.isRunning, async (running, wasRunning) => {
   if (wasRunning && !running && props.paper) {
-    try { isPdfCached.value = await window.api.isPdfCached(props.paper.id) } catch { isPdfCached.value = false }
+    try {
+      isPdfCached.value = isConference.value
+        ? await window.api.conferenceIsPdfCached(props.paper.id)
+        : await window.api.isPdfCached(props.paper.id)
+    } catch { isPdfCached.value = false }
   }
 })
 
-const isCurrentPaper = computed(() => {
-  return props.paper ? queueStore.currentPaperId === props.paper.id : false
-})
+const isCurrentPaper = computed(() => props.paper ? queueStore.currentPaperId === props.paper.id : false)
+const isInQueue = computed(() => props.paper ? queueStore.isInQueue(props.paper.id) : false)
+const isAnalysisCurrentPaper = computed(() => props.paper ? analysisQueueStore.currentPaperId === props.paper.id : false)
+const isAnalysisInQueue = computed(() => props.paper ? analysisQueueStore.isInQueue(props.paper.id) : false)
 
-const isInQueue = computed(() => {
-  return props.paper ? queueStore.isInQueue(props.paper.id) : false
-})
-
-const isAnalysisCurrentPaper = computed(() => {
-  return props.paper ? analysisQueueStore.currentPaperId === props.paper.id : false
-})
-
-const isAnalysisInQueue = computed(() => {
-  return props.paper ? analysisQueueStore.isInQueue(props.paper.id) : false
-})
-
-// Auto-switch to summary tab when paper becomes analyzed
 watch(() => props.paper?.summary, (val) => {
   if (val && activeTab.value === 'abstract') activeTab.value = 'summary'
 })
@@ -169,13 +210,13 @@ const isAnalyzed = computed(() => {
 const addToQueue = () => {
   if (!props.paper) return
   if (isInQueue.value) return
-  queueStore.enqueue([{ id: props.paper.id, title: props.paper.title }])
+  queueStore.enqueue([{ id: props.paper.id, title: props.paper.title, conference: isConference.value }])
 }
 
 const addToAnalysisQueue = () => {
   if (!props.paper) return
   if (isAnalysisInQueue.value) return
-  analysisQueueStore.enqueue([{ id: props.paper.id, title: props.paper.title }])
+  analysisQueueStore.enqueue([{ id: props.paper.id, title: props.paper.title, conference: isConference.value }])
 }
 
 const isPdfDownloading = computed(() => props.paper ? downloadStore.currentPaperId === props.paper.id : false)
@@ -185,15 +226,20 @@ const pdfButtonText = computed(() => {
   if (isPdfCached.value) return '打开 PDF'
   if (isPdfDownloading.value) return '下载中'
   if (isPdfQueued.value) return '排队中'
+  if (pdfDisabled.value) return '无 PDF'
   return '下载 PDF'
 })
 
 const downloadPdf = () => {
-  if (!props.paper) return
+  if (!props.paper || pdfDisabled.value) return
   if (isPdfCached.value) {
-    openPdf(props.paper.id)
+    if (isConference.value) {
+      window.api.conferenceOpenPdf(props.paper.id)
+    } else {
+      openPdf(props.paper.id)
+    }
   } else {
-    downloadStore.enqueue([{ id: props.paper.id, title: props.paper.title }])
+    downloadStore.enqueue([{ id: props.paper.id, title: props.paper.title, conference: isConference.value }])
   }
 }
 
@@ -201,7 +247,11 @@ const doDeletePdf = async () => {
   if (!props.paper || !isPdfCached.value) return
   showMoreMenu.value = false
   try {
-    await window.api.deletePdf(props.paper.id)
+    if (isConference.value) {
+      await window.api.conferenceDeletePdf(props.paper.id)
+    } else {
+      await window.api.deletePdf(props.paper.id)
+    }
     isPdfCached.value = false
     toastStore.show('已删除', 'PDF 已删除', 'success')
   } catch (err) {
@@ -213,8 +263,13 @@ const doDeleteSummary = async () => {
   if (!props.paper || !hasSummary.value) return
   showMoreMenu.value = false
   try {
-    await window.api.deleteSummary(props.paper.id)
-    papersStore.selectPaper(props.paper.id)
+    if (isConference.value) {
+      await window.api.conferenceDeleteSummary(props.paper.id)
+      conferenceStore.selectPaper(props.paper.id)
+    } else {
+      await window.api.deleteSummary(props.paper.id)
+      papersStore.selectPaper(props.paper.id)
+    }
     toastStore.show('已删除', '论文总结已删除', 'success')
   } catch (err) {
     toastStore.show('删除失败', '删除失败', 'error', extractErrorMessage(err))
@@ -225,11 +280,28 @@ const doDeleteAnalysis = async () => {
   if (!props.paper || !hasAnalysis.value) return
   showMoreMenu.value = false
   try {
-    await window.api.deleteAnalysis(props.paper.id)
-    papersStore.selectPaper(props.paper.id)
+    if (isConference.value) {
+      await window.api.conferenceDeleteAnalysis(props.paper.id)
+      conferenceStore.selectPaper(props.paper.id)
+    } else {
+      await window.api.deleteAnalysis(props.paper.id)
+      papersStore.selectPaper(props.paper.id)
+    }
     toastStore.show('已删除', '论文分析已删除', 'success')
   } catch (err) {
     toastStore.show('删除失败', '删除失败', 'error', extractErrorMessage(err))
+  }
+}
+
+const copyBibtex = async () => {
+  if (!props.paper || isConference.value) return
+  const bibtex = (props.paper as ConferencePaper).bibtex
+  if (!bibtex) return
+  try {
+    await navigator.clipboard.writeText(bibtex)
+    toastStore.show('已复制', 'BibTeX 已复制到剪贴板', 'success')
+  } catch {
+    toastStore.show('复制失败', '无法复制到剪贴板', 'error')
   }
 }
 
@@ -272,7 +344,11 @@ const doExportToZotero = async (collectionKey: string) => {
   try {
     const summaryHtml = props.paper.summary ? renderMarkdownOnly(props.paper.summary) : undefined
     const analysisHtml = props.paper.analysis ? renderMarkdownOnly(props.paper.analysis) : undefined
-    await exportPaperToZotero(props.paper.id, collectionKey, summaryHtml, analysisHtml)
+    if (isConference.value) {
+      await conferenceExportToZotero(props.paper.id, collectionKey, summaryHtml, analysisHtml)
+    } else {
+      await exportPaperToZotero(props.paper.id, collectionKey, summaryHtml, analysisHtml)
+    }
     toastStore.show('导出成功', '已成功导出到 Zotero', 'success')
   } catch (err) {
     console.error('Failed to export to Zotero:', err)
@@ -282,7 +358,6 @@ const doExportToZotero = async (collectionKey: string) => {
   }
 }
 
-// Close zotero menu on outside click
 const onDocClick = (e: MouseEvent) => {
   if (!showZoteroMenu.value && !showMoreMenu.value) return
   const target = e.target as HTMLElement
@@ -371,28 +446,28 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 }
 
 .action-analyze {
-  color: var(--color-success);
-  border-color: var(--color-success);
+  color: var(--color-summary);
+  border-color: var(--color-summary-border);
 }
 
 .action-analyze:hover:not(:disabled) {
-  background: var(--color-success-bg);
-  border-color: var(--color-success);
+  background: var(--color-summary-bg);
+  border-color: var(--color-summary);
 }
 
 .action-deep {
-  color: var(--color-deep);
-  border-color: var(--color-deep-border);
+  color: var(--color-analysis);
+  border-color: var(--color-analysis-border);
 }
 
 .action-deep:hover:not(:disabled) {
-  background: var(--color-deep-bg);
-  border-color: var(--color-deep-border);
+  background: var(--color-analysis-bg);
+  border-color: var(--color-analysis-border);
 }
 
 .action-zotero {
   color: var(--color-danger);
-  border-color: var(--color-danger-border);
+  border-color: var(--color-danger);
 }
 
 .action-zotero:hover:not(:disabled) {
@@ -506,6 +581,37 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
   font-size: 14px;
   text-align: center;
   padding: 32px 0;
+}
+
+/* BibTeX */
+.bibtex-code {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  cursor: text;
+  user-select: all;
+}
+
+.copy-bibtex-btn {
+  margin-top: 8px;
+  padding: 6px 16px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.copy-bibtex-btn:hover {
+  background: var(--bg-secondary);
 }
 
 /* TeX content */

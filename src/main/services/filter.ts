@@ -14,11 +14,11 @@ export function matchesKeywords(text: string, keywords: string[]): boolean {
 }
 
 /**
- * Filter papers by topic keywords. Returns matching topic names.
+ * Filter papers by topic keywords. Returns matching topic IDs.
  */
-export function filterPaperTopics(title: string, abstractText: string, topics: Topic[]): string[] {
+export function filterPaperTopics(title: string, abstractText: string, topics: Topic[]): number[] {
   const text = `${title} ${abstractText}`;
   return topics
     .filter(topic => matchesKeywords(text, topic.keywords))
-    .map(topic => topic.name);
+    .map(topic => topic.id);
 }

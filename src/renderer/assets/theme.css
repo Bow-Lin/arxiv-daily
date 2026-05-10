@@ -24,6 +24,10 @@
   --color-success-bg: #ecfdf5;
   --color-success-border: #bbf7d0;
 
+  --color-summary: #059669;
+  --color-summary-bg: #ecfdf5;
+  --color-summary-border: #059669;
+
   --color-error: #dc2626;
   --color-error-bg: #fef2f2;
   --color-error-border: #fecaca;
@@ -33,9 +37,9 @@
   --color-danger-border: #fdba74;
   --color-danger-hover: #fb923c;
 
-  --color-deep: #7c3aed;
-  --color-deep-bg: #f5f3ff;
-  --color-deep-border: #e9d5ff;
+  --color-analysis: #7c3aed;
+  --color-analysis-bg: #f5f3ff;
+  --color-analysis-border: #7c3aed;
 
   /* 组件专用 */
   --sidebar-bg: #f9fafb;
@@ -44,16 +48,17 @@
   --panel-bg: #ffffff;
   --panel-header-bg: #f9fafb;
   --panel-list-bg: #ffffff;
-  --card-border: #f0f0f0;
+  --card-border: #e5e7eb;
   --card-hover: #f9fafb;
   --tag-active-text: #2563eb;
   --tag-bg: transparent;
   --tag-active-bg: #f3f4f6;
   --category-bg: #f3f4f6;
-  --card-selected: #eff6ff;
+  --card-selected: #dbeafe;
   --card-selected-text: #374151;
-  --nav-active: #dbeafe;
+  --nav-active: #bfdbfe;
   --badge-success: #059669;
+  --toggle-thumb-bg: #ffffff;
 
   /* 阴影 */
   --shadow-sm: rgba(0, 0, 0, 0.06);
@@ -93,9 +98,13 @@
   --color-danger-border: #3a2a1a;
   --color-danger-hover: #fdba74;
 
-  --color-deep: #a78bfa;
-  --color-deep-bg: #1a1a2a;
-  --color-deep-border: #2a2a3a;
+  --color-summary: #34d399;
+  --color-summary-bg: #0a2a1a;
+  --color-summary-border: #34d399;
+
+  --color-analysis: #a78bfa;
+  --color-analysis-bg: #1a1a2a;
+  --color-analysis-border: #7c3aed;
 
   --sidebar-bg: #222222;
   --header-bg: #1a1a1a;
@@ -103,7 +112,7 @@
   --panel-bg: #333333;
   --panel-header-bg: #333333;
   --panel-list-bg: #3a3a3a;
-  --card-border: #333333;
+  --card-border: #444444;
   --card-hover: #333333;
   --tag-active-text: #cccccc;
   --tag-bg: transparent;
@@ -113,6 +122,7 @@
   --card-selected-text: #b0b0b0;
   --nav-active: #2a6adb;
   --badge-success: #34d399;
+  --toggle-thumb-bg: #d1d5db;
 
   --shadow-sm: rgba(0, 0, 0, 0.2);
   --shadow-md: rgba(0, 0, 0, 0.3);

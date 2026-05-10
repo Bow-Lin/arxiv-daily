@@ -31,22 +31,29 @@
       </div>
     </div>
 
-    <div v-if="isAdding" class="topic-add">
-      <div class="form-field">
-        <label class="field-label">主题名称</label>
-        <input v-model="newTopic.name" placeholder="输入主题名称" class="edit-input" />
-      </div>
-      <div class="form-field">
-        <label class="field-label">关键词（逗号分隔）</label>
-        <input v-model="newKeywords" placeholder="例如：深度学习, 计算机视觉, Transformer" class="edit-input" />
-      </div>
-      <div class="edit-actions">
-        <button @click="saveNew" class="btn-save">添加</button>
-        <button @click="cancelAdd" class="btn-cancel">取消</button>
-      </div>
+    <div class="bottom-actions">
+      <button @click="startAdd" class="btn-add">添加主题</button>
+      <button @click="rebuildIndex" class="btn-rebuild">重建索引</button>
     </div>
 
-    <button v-else @click="startAdd" class="btn-add">+ 添加主题</button>
+    <!-- Add topic dialog -->
+    <div v-if="isAdding" class="dialog-overlay" @click.self="cancelAdd">
+      <div class="dialog">
+        <h4 class="dialog-title">添加主题</h4>
+        <div class="form-field">
+          <label class="field-label">主题名称</label>
+          <input v-model="newTopic.name" placeholder="输入主题名称" class="edit-input" />
+        </div>
+        <div class="form-field">
+          <label class="field-label">关键词（逗号分隔）</label>
+          <input v-model="newKeywords" placeholder="例如：深度学习, 计算机视觉, Transformer" class="edit-input" />
+        </div>
+        <div class="edit-actions">
+          <button @click="saveNew" class="btn-save">添加</button>
+          <button @click="cancelAdd" class="btn-cancel">取消</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -110,6 +117,10 @@ const deleteTopic = async (id: number) => {
     console.error('Failed to delete topic:', err)
     alert('删除失败: ' + (err instanceof Error ? err.message : String(err)))
   }
+}
+
+const rebuildIndex = () => {
+  configStore.triggerRebuild()
 }
 </script>
 
@@ -189,8 +200,7 @@ const deleteTopic = async (id: number) => {
   color: var(--color-error);
 }
 
-.topic-edit,
-.topic-add {
+.topic-edit {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -224,7 +234,8 @@ const deleteTopic = async (id: number) => {
 
 .btn-save,
 .btn-cancel,
-.btn-add {
+.btn-add,
+.btn-rebuild {
   padding: 8px 16px;
   border-radius: 4px;
   font-size: 14px;
@@ -242,15 +253,55 @@ const deleteTopic = async (id: number) => {
   border: 1px solid var(--border-primary);
 }
 
+.bottom-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .btn-add {
   background: var(--card-bg);
-  border: 1px dashed var(--border-secondary);
-  color: var(--text-tertiary);
-  width: 100%;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
 }
 
 .btn-add:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: var(--bg-tertiary);
+}
+
+.btn-rebuild {
+  background: var(--card-bg);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+}
+
+.btn-rebuild:hover {
+  background: var(--bg-tertiary);
+}
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  padding: 24px;
+  width: 400px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 16px;
 }
 </style>

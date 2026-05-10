@@ -16,14 +16,14 @@ export interface FetchDate {
 
 // Paper API
 export const listPapers = async (params: {
-  topicId?: number
+  topicIds?: number[]
   search?: string
   fetchDate?: string
   page?: number
   pageSize?: number
 }): Promise<PaginatedResult<PaperWithAnalysis>> => {
   return window.api.listPapers({
-    topicId: params.topicId,
+    topicIds: params.topicIds,
     search: params.search,
     fetchDate: params.fetchDate,
     page: params.page || 1,
@@ -211,4 +211,87 @@ export const listZoteroCollections = async (): Promise<ZoteroCollection[]> => {
 
 export const exportPaperToZotero = async (paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string): Promise<{ success: boolean; itemKey: string }> => {
   return window.api.exportPaperToZotero(paperId, collectionKey, summaryHtml, analysisHtml)
+}
+
+// Conference API
+export const listConferences = async (): Promise<ConferenceInfo[]> => {
+  return window.api.listConferences()
+}
+
+export const listConferencePapers = async (params: {
+  conferenceId?: number | null
+  search?: string
+  tracks?: string[]
+  topicIds?: number[]
+  page?: number
+  pageSize?: number
+}): Promise<PaginatedResult<ConferencePaper>> => {
+  return window.api.listConferencePapers({
+    conferenceId: params.conferenceId,
+    search: params.search,
+    tracks: params.tracks,
+    topicIds: params.topicIds,
+    page: params.page || 1,
+    pageSize: params.pageSize || 20,
+  })
+}
+
+export const getConferencePaperDetail = async (paperId: string): Promise<ConferencePaper> => {
+  return window.api.getConferencePaperDetail(paperId)
+}
+
+export const listConferenceTracks = async (conferenceId: number): Promise<{ track: string; count: number }[]> => {
+  return window.api.listConferenceTracks(conferenceId)
+}
+
+export const conferenceSummarizePaper = async (paperId: string, skipIfAnalyzed = true): Promise<{ success: boolean; summary: string | null; skipped?: boolean; cancelled?: boolean }> => {
+  return window.api.conferenceSummarizePaper(paperId, skipIfAnalyzed)
+}
+
+export const conferenceStopSummary = async (): Promise<{ success: boolean }> => {
+  return window.api.conferenceStopSummary()
+}
+
+export const conferenceGetUnanalyzedIds = async (): Promise<{ id: string; title: string }[]> => {
+  return window.api.conferenceGetUnanalyzedIds()
+}
+
+export const conferenceAnalyzeFullPaper = async (paperId: string): Promise<{ success: boolean; cancelled?: boolean }> => {
+  return window.api.conferenceAnalyzeFullPaper(paperId)
+}
+
+export const conferenceGetPaperAnalysis = async (paperId: string): Promise<string | null> => {
+  return window.api.conferenceGetPaperAnalysis(paperId)
+}
+
+export const conferenceStopAnalysis = async (): Promise<{ success: boolean }> => {
+  return window.api.conferenceStopAnalysis()
+}
+
+export const conferenceDownloadPdf = async (paperId: string): Promise<string> => {
+  return window.api.conferenceDownloadPdf(paperId)
+}
+
+export const conferenceOpenPdf = async (paperId: string): Promise<void> => {
+  return window.api.conferenceOpenPdf(paperId)
+}
+
+export const conferenceIsPdfCached = async (paperId: string): Promise<boolean> => {
+  return window.api.conferenceIsPdfCached(paperId)
+}
+
+export const conferenceDeletePdf = async (paperId: string): Promise<void> => {
+  return window.api.conferenceDeletePdf(paperId)
+}
+
+export const conferenceDeleteSummary = async (paperId: string): Promise<void> => {
+  return window.api.conferenceDeleteSummary(paperId)
+}
+
+export const conferenceDeleteAnalysis = async (paperId: string): Promise<void> => {
+  return window.api.conferenceDeleteAnalysis(paperId)
+}
+
+export const conferenceExportToZotero = async (paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string): Promise<{ success: boolean; itemKey: string }> => {
+  return window.api.conferenceExportToZotero(paperId, collectionKey, summaryHtml, analysisHtml)
 }

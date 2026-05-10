@@ -1,10 +1,10 @@
 {
-  "name": "arxiv-daily",
-  "productName": "arXiv Daily",
+  "name": "sciphant",
+  "productName": "SciPhant",
   "private": true,
-  "version": "0.4.5",
+  "version": "0.5.0",
   "description": "Desktop app for fetching, filtering and analyzing arXiv papers",
-  "author": "arXiv Daily Developer",
+  "author": "SciPhant Developer",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "vite",

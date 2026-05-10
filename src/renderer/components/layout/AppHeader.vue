@@ -7,10 +7,10 @@
           ref="searchInput"
           type="text"
           placeholder="搜索论文..."
-          :value="papersStore.searchQuery"
+          :value="activeStore.searchQuery"
           @input="onSearch"
         />
-        <button v-if="papersStore.searchQuery" class="search-clear" @click="clearSearch">
+        <button v-if="activeStore.searchQuery" class="search-clear" @click="clearSearch">
           <X :size="14" />
         </button>
       </div>
@@ -19,13 +19,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { Search, X } from 'lucide-vue-next'
 import { usePapersStore } from '../../stores/papers'
+import { useConferencePapersStore } from '../../stores/conference-papers'
+import { useModeStore } from '../../stores/mode'
 
 const isMac = (navigator as any).userAgentData?.platform === 'macOS'
 const papersStore = usePapersStore()
+const conferenceStore = useConferencePapersStore()
+const modeStore = useModeStore()
 const searchInput = ref<HTMLInputElement | null>(null)
+
+const activeStore = computed(() => modeStore.isConference ? conferenceStore : papersStore)
 
 let debounceTimer: number | null = null
 
@@ -33,12 +39,12 @@ const onSearch = (e: Event) => {
   const value = (e.target as HTMLInputElement).value
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = window.setTimeout(() => {
-    papersStore.loadPapers({ search: value })
+    activeStore.value.loadPapers({ search: value })
   }, 300)
 }
 
 const clearSearch = () => {
-  papersStore.loadPapers({ search: '' })
+  activeStore.value.loadPapers({ search: '' })
   searchInput.value?.focus()
 }
 

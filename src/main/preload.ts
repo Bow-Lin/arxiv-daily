@@ -76,6 +76,25 @@ const api = {
     ipcRenderer.on('analysis-progress', handler);
     return () => ipcRenderer.removeListener('analysis-progress', handler);
   },
+
+  // Conference
+  listConferences: () => ipcRenderer.invoke('conference:list-conferences'),
+  listConferencePapers: (params: unknown) => ipcRenderer.invoke('conference:list-papers', params),
+  getConferencePaperDetail: (id: string) => ipcRenderer.invoke('conference:get-paper-detail', id),
+  listConferenceTracks: (conferenceId: number) => ipcRenderer.invoke('conference:list-tracks', conferenceId),
+  conferenceSummarizePaper: (id: string, skipIfAnalyzed?: boolean) => ipcRenderer.invoke('conference:summarize-paper', id, skipIfAnalyzed),
+  conferenceStopSummary: () => ipcRenderer.invoke('conference:stop-summary'),
+  conferenceGetUnanalyzedIds: () => ipcRenderer.invoke('conference:get-unanalyzed-ids'),
+  conferenceAnalyzeFullPaper: (id: string) => ipcRenderer.invoke('conference:analyze-full-paper', id),
+  conferenceGetPaperAnalysis: (id: string) => ipcRenderer.invoke('conference:get-paper-analysis', id),
+  conferenceStopAnalysis: () => ipcRenderer.invoke('conference:stop-analysis'),
+  conferenceDownloadPdf: (id: string) => ipcRenderer.invoke('conference:download-pdf', id),
+  conferenceOpenPdf: (id: string) => ipcRenderer.invoke('conference:open-pdf', id),
+  conferenceIsPdfCached: (id: string) => ipcRenderer.invoke('conference:is-pdf-cached', id),
+  conferenceDeletePdf: (id: string) => ipcRenderer.invoke('conference:delete-pdf', id),
+  conferenceDeleteSummary: (id: string) => ipcRenderer.invoke('conference:delete-summary', id),
+  conferenceDeleteAnalysis: (id: string) => ipcRenderer.invoke('conference:delete-analysis', id),
+  conferenceExportToZotero: (paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string) => ipcRenderer.invoke('conference:export-to-zotero', paperId, collectionKey, summaryHtml, analysisHtml),
 };
 
 contextBridge.exposeInMainWorld('api', api);

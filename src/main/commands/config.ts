@@ -1,5 +1,5 @@
 import type { Database as SqlJsDatabase } from 'sql.js';
-import { filterPaperTopics, type Topic } from '../services/filter';
+import type { Topic } from '../services/filter';
 
 export interface LLMConfig {
   api_key: string;
@@ -32,9 +32,9 @@ export interface Category {
 }
 
 /**
- * Load LLM config from app_config table, with temperature clamped to [0.0, 2.0].
+ * Load LLM config from settings db app_config table, with temperature clamped to [0.0, 2.0].
  */
-export function loadLLMConfig(db: SqlJsDatabase): LLMConfig {
+export function loadLLMConfig(settingsDb: SqlJsDatabase): LLMConfig {
   const config: LLMConfig = {
     api_key: '',
     base_url: '',
@@ -42,7 +42,7 @@ export function loadLLMConfig(db: SqlJsDatabase): LLMConfig {
     temperature: 1.0,
   };
 
-  const rows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'llm.%'");
+  const rows = settingsDb.exec("SELECT key, value FROM app_config WHERE key LIKE 'llm.%'");
   if (rows.length === 0) return config;
 
   for (const row of rows[0].values) {
@@ -69,12 +69,12 @@ export function loadLLMConfig(db: SqlJsDatabase): LLMConfig {
 }
 
 /**
- * Load Zotero config from app_config table.
+ * Load Zotero config from settings db app_config table.
  */
-export function loadZoteroConfig(db: SqlJsDatabase): ZoteroConfig {
+export function loadZoteroConfig(settingsDb: SqlJsDatabase): ZoteroConfig {
   const config: ZoteroConfig = { api_key: '', user_id: '' };
 
-  const rows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'zotero.%'");
+  const rows = settingsDb.exec("SELECT key, value FROM app_config WHERE key LIKE 'zotero.%'");
   if (rows.length === 0) return config;
 
   for (const row of rows[0].values) {
@@ -87,47 +87,10 @@ export function loadZoteroConfig(db: SqlJsDatabase): ZoteroConfig {
 }
 
 /**
- * Rebuild all papers' relevance_topics based on current enabled topics.
- * Called asynchronously via IPC after topic changes.
- */
-export function rebuildPaperTopics(db: SqlJsDatabase): number {
-  // Load enabled topics
-  const topicRows = db.exec('SELECT id, name, keywords, enabled FROM topics WHERE enabled = TRUE');
-  const topics: Topic[] = topicRows.length > 0
-    ? topicRows[0].values.map(row => ({
-      id: row[0] as number,
-      name: row[1] as string,
-      keywords: JSON.parse(row[2] as string),
-      enabled: Boolean(row[3]),
-    }))
-    : [];
-
-  // Load all papers
-  const paperRows = db.exec('SELECT id, title, abstract_text FROM papers');
-  if (paperRows.length === 0) return 0;
-
-  const count = paperRows[0].values.length;
-
-  // Update each paper's relevance_topics
-  for (const row of paperRows[0].values) {
-    const paperId = row[0];
-    const title = row[1] as string;
-    const abstractText = row[2] as string;
-    const matched = filterPaperTopics(title, abstractText, topics);
-    const topicsJson = matched.length > 0
-      ? JSON.stringify(matched)
-      : null;
-    db.run('UPDATE papers SET relevance_topics = ? WHERE id = ?', [topicsJson, paperId]);
-  }
-
-  return count;
-}
-
-/**
  * List all topics.
  */
-export function listTopics(db: SqlJsDatabase): Topic[] {
-  const rows = db.exec('SELECT id, name, keywords, enabled FROM topics ORDER BY id');
+export function listTopics(paperTopicsDb: SqlJsDatabase): Topic[] {
+  const rows = paperTopicsDb.exec('SELECT id, name, keywords, enabled FROM topics ORDER BY id');
   if (rows.length === 0) return [];
   return rows[0].values.map(row => ({
     id: row[0] as number,
@@ -140,7 +103,7 @@ export function listTopics(db: SqlJsDatabase): Topic[] {
 /**
  * Save a topic (insert or update).
  */
-export function saveTopic(db: SqlJsDatabase, topic: {
+export function saveTopic(paperTopicsDb: SqlJsDatabase, topic: {
   id?: number;
   name: string;
   keywords: string[];
@@ -150,16 +113,16 @@ export function saveTopic(db: SqlJsDatabase, topic: {
   let id: number;
 
   if (topic.id != null) {
-    db.run('UPDATE topics SET name = ?, keywords = ?, enabled = ? WHERE id = ?',
+    paperTopicsDb.run('UPDATE topics SET name = ?, keywords = ?, enabled = ? WHERE id = ?',
       [topic.name, keywordsJson, topic.enabled ? 1 : 0, topic.id]);
-    if (db.getRowsModified() === 0) {
+    if (paperTopicsDb.getRowsModified() === 0) {
       throw new Error(`Topic ${topic.id} not found`);
     }
     id = topic.id;
   } else {
-    db.run('INSERT INTO topics (name, keywords, enabled) VALUES (?, ?, ?)',
+    paperTopicsDb.run('INSERT INTO topics (name, keywords, enabled) VALUES (?, ?, ?)',
       [topic.name, keywordsJson, topic.enabled ? 1 : 0]);
-    const lastId = db.exec('SELECT last_insert_rowid()');
+    const lastId = paperTopicsDb.exec('SELECT last_insert_rowid()');
     id = lastId[0].values[0][0] as number;
   }
 
@@ -169,9 +132,9 @@ export function saveTopic(db: SqlJsDatabase, topic: {
 /**
  * Delete a topic.
  */
-export function deleteTopic(db: SqlJsDatabase, topicId: number): void {
-  db.run('DELETE FROM topics WHERE id = ?', [topicId]);
-  if (db.getRowsModified() === 0) {
+export function deleteTopic(paperTopicsDb: SqlJsDatabase, topicId: number): void {
+  paperTopicsDb.run('DELETE FROM topics WHERE id = ?', [topicId]);
+  if (paperTopicsDb.getRowsModified() === 0) {
     throw new Error(`Topic ${topicId} not found`);
   }
 }
@@ -179,16 +142,16 @@ export function deleteTopic(db: SqlJsDatabase, topicId: number): void {
 /**
  * Get full application config (LLM + output + theme).
  */
-export function getConfig(db: SqlJsDatabase): ConfigResponse {
-  const llmConfig = loadLLMConfig(db);
+export function getConfig(settingsDb: SqlJsDatabase): ConfigResponse {
+  const llmConfig = loadLLMConfig(settingsDb);
   const outputConfig: OutputConfig = {
     output_dir: '',
     auto_save: false,
   };
-  const zoteroConfig = loadZoteroConfig(db);
+  const zoteroConfig = loadZoteroConfig(settingsDb);
   let theme: string | undefined;
 
-  const configRows = db.exec("SELECT key, value FROM app_config WHERE key LIKE 'output.%' OR key = 'theme'");
+  const configRows = settingsDb.exec("SELECT key, value FROM app_config WHERE key LIKE 'output.%' OR key = 'theme'");
   if (configRows.length > 0) {
     for (const row of configRows[0].values) {
       const key = row[0] as string;
@@ -213,36 +176,36 @@ export function getConfig(db: SqlJsDatabase): ConfigResponse {
 /**
  * Update application config (LLM + output + theme).
  */
-export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputConfig, zotero?: ZoteroConfig, theme?: string): void {
+export function updateConfig(settingsDb: SqlJsDatabase, llm: LLMConfig, output: OutputConfig, zotero?: ZoteroConfig, theme?: string): void {
   // Save LLM config
-  db.run(
+  settingsDb.run(
     `INSERT INTO app_config (key, value) VALUES ('llm.api_key', ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     [llm.api_key],
   );
-  db.run(
+  settingsDb.run(
     `INSERT INTO app_config (key, value) VALUES ('llm.base_url', ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     [llm.base_url],
   );
-  db.run(
+  settingsDb.run(
     `INSERT INTO app_config (key, value) VALUES ('llm.model', ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     [llm.model],
   );
-  db.run(
+  settingsDb.run(
     `INSERT INTO app_config (key, value) VALUES ('llm.temperature', ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     [String(Math.max(0.0, Math.min(2.0, llm.temperature)))],
   );
 
   // Save output config
-  db.run(
+  settingsDb.run(
     `INSERT INTO app_config (key, value) VALUES ('output.dir', ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     [output.output_dir],
   );
-  db.run(
+  settingsDb.run(
     `INSERT INTO app_config (key, value) VALUES ('output.auto_save', ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     [String(output.auto_save)],
@@ -250,12 +213,12 @@ export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputCo
 
   // Save Zotero config
   if (zotero) {
-    db.run(
+    settingsDb.run(
       `INSERT INTO app_config (key, value) VALUES ('zotero.api_key', ?)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       [zotero.api_key],
     );
-    db.run(
+    settingsDb.run(
       `INSERT INTO app_config (key, value) VALUES ('zotero.user_id', ?)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       [zotero.user_id],
@@ -264,7 +227,7 @@ export function updateConfig(db: SqlJsDatabase, llm: LLMConfig, output: OutputCo
 
   // Save theme
   if (theme) {
-    db.run(
+    settingsDb.run(
       `INSERT INTO app_config (key, value) VALUES ('theme', ?)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       [theme],
@@ -343,8 +306,8 @@ export function clearAnalyses(db: SqlJsDatabase): { success: boolean } {
 /**
  * Test Zotero connection by fetching collections.
  */
-export async function testZoteroConnection(db: SqlJsDatabase): Promise<{ success: boolean; message: string }> {
-  const config = loadZoteroConfig(db);
+export async function testZoteroConnection(settingsDb: SqlJsDatabase): Promise<{ success: boolean; message: string }> {
+  const config = loadZoteroConfig(settingsDb);
   if (!config.api_key || !config.user_id) {
     return { success: false, message: 'Zotero API Key 和 User ID 未配置' };
   }

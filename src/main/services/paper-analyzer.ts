@@ -8,6 +8,7 @@ export type ProgressCallback = (phase: string) => void;
 
 export async function analyzeFullPaper(
   db: SqlJsDatabase,
+  settingsDb: SqlJsDatabase,
   paperId: string,
   signal?: AbortSignal,
   dataDir?: string,
@@ -31,7 +32,7 @@ export async function analyzeFullPaper(
   }
 
   onProgress?.('分析中');
-  const llmConfig = loadLLMConfig(db);
+  const llmConfig = loadLLMConfig(settingsDb);
   const client = new LLMClient(llmConfig.api_key, llmConfig.model, llmConfig.base_url, llmConfig.temperature);
   const analysisResult = await client.analyzeFullPaper(title, fullText, signal);
 

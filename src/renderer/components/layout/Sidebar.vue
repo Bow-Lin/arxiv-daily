@@ -1,8 +1,10 @@
 <template>
   <aside class="sidebar">
+    <!-- arxiv mode -->
+    <template v-if="!modeStore.isConference">
     <div class="actions-col">
       <div class="menu-wrapper">
-        <button class="btn-fetch" :disabled="progressStore.isFetching" @click="toggleMenu('fetch')">
+        <button class="btn-fetch" :class="{ active: activeMenu === 'fetch' }" :disabled="progressStore.isFetching" @click="toggleMenu('fetch')">
           <Download :size="13" />
           获取论文
         </button>
@@ -22,14 +24,14 @@
         </div>
       </div>
       <div class="menu-wrapper">
-        <button class="btn-fetch" :disabled="progressStore.isFetching" @click="toggleMenu('summarize')">
+        <button class="btn-fetch" :class="{ active: activeMenu === 'summarize' }" :disabled="progressStore.isFetching" @click="toggleMenu('summarize')">
           <PenLine :size="13" />
           总结论文
         </button>
         <div v-if="activeMenu === 'summarize'" class="dropdown-menu">
           <div class="dropdown-menu-item" @click="activeMenu = null; analyzePapersAction()">
             <PenLine :size="13" />
-            总结关注话题
+            总结所有话题
           </div>
           <div class="dropdown-menu-item" @click="activeMenu = null; summarizeCurrentPapers()">
             <PenLine :size="13" />
@@ -64,15 +66,79 @@
         <span class="nav-count">{{ fd.count }}</span>
       </div>
     </div>
+    </template>
+
+    <!-- conference mode -->
+    <template v-else>
+    <div class="actions-col">
+      <div class="menu-wrapper">
+        <button class="btn-fetch" :class="{ active: activeMenu === 'summarize' }" :disabled="progressStore.isFetching" @click="toggleMenu('summarize')">
+          <PenLine :size="13" />
+          总结论文
+        </button>
+        <div v-if="activeMenu === 'summarize'" class="dropdown-menu">
+          <div class="dropdown-menu-item" @click="activeMenu = null; summarizeConferenceCurrent()">
+            <PenLine :size="13" />
+            总结当前列表
+          </div>
+          <div class="dropdown-menu-item" @click="activeMenu = null; summarizeConferenceSelected()">
+            <PenLine :size="13" />
+            总结选中论文
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">会议列表</div>
+    <div class="dates-section">
+      <div
+        class="nav-item"
+        :class="{ active: !conferenceStore.selectedConferenceId }"
+        @click="expandedGroup = null; conferenceStore.selectConference(null)"
+      >
+        <span class="nav-label">全部会议</span>
+        <span class="nav-count">{{ conferenceStore.totalCount }}</span>
+      </div>
+      <div
+        v-for="group in conferenceGroups"
+        :key="group.short_name"
+        class="conference-group"
+        :class="{ expanded: expandedGroup === group.short_name }"
+      >
+        <div class="nav-item group-header" @click="toggleGroup(group.short_name)">
+          <span class="nav-label">{{ group.short_name }}</span>
+        </div>
+        <div class="group-years">
+          <div class="group-years-inner">
+            <div
+              v-for="conf in group.years"
+              :key="conf.id"
+              class="nav-item nav-item-sub"
+              :class="{ active: conferenceStore.selectedConferenceId === conf.id }"
+              @click="selectConferenceYear(conf)"
+            >
+              <span class="nav-label">{{ conf.short_name }} {{ conf.year }}</span>
+              <span class="nav-count">{{ conf.paper_count }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </template>
 
     <div class="sidebar-footer">
       <div class="footer-row">
+        <div class="mode-toggle" :class="{ 'mode-conference': modeStore.isConference }" @click="modeStore.toggleMode()">
+          <span class="toggle-label toggle-label-left">会议</span>
+          <span class="toggle-label toggle-label-right">arXiv</span>
+          <span class="toggle-thumb"></span>
+        </div>
         <button class="btn-icon" @click="goToConfig">
-          <Settings :size="14" />
+          <Settings :size="18" />
         </button>
         <button ref="queueBtnRef" class="btn-queue" @click="toggleQueuePanel">
           <span class="queue-icon">
-            <ListChecks :size="14" />
+            <ListChecks :size="18" />
             <span v-if="queueTotalCount > 0" class="queue-badge">{{ queueTotalCount }}</span>
           </span>
         </button>
@@ -81,7 +147,7 @@
         <div v-if="showQueuePanel" class="sidebar-queue-panel">
           <div class="queue-panel-outer">
           <div class="queue-panel">
-            <div class="queue-panel-header" @click="summaryCollapsed = !summaryCollapsed">
+            <div class="queue-panel-header" :class="{ collapsed: summaryCollapsed }" @click="summaryCollapsed = !summaryCollapsed">
               <span class="queue-panel-title">总结队列</span>
               <div class="queue-header-actions">
                 <button v-if="queueStore.isRunning || queueStore.queue.length > 0" class="btn-queue-stop" @click.stop="queueStore.requestStop(); queueStore.clear()">全部取消</button>
@@ -115,7 +181,7 @@
             </div>
             </Transition>
             <div class="queue-section-divider"></div>
-            <div class="queue-panel-header" @click="analysisCollapsed = !analysisCollapsed">
+            <div class="queue-panel-header" :class="{ collapsed: analysisCollapsed }" @click="analysisCollapsed = !analysisCollapsed">
               <span class="queue-panel-title">分析队列</span>
               <div class="queue-header-actions">
                 <button v-if="analysisQueueStore.isRunning || analysisQueueStore.queue.length > 0" class="btn-queue-stop" @click.stop="analysisQueueStore.requestStop(); analysisQueueStore.clear()">全部取消</button>
@@ -150,7 +216,7 @@
             </div>
             </Transition>
             <div class="queue-section-divider"></div>
-            <div class="queue-panel-header" @click="downloadCollapsed = !downloadCollapsed">
+            <div class="queue-panel-header" :class="{ collapsed: downloadCollapsed }" @click="downloadCollapsed = !downloadCollapsed">
               <span class="queue-panel-title">下载队列</span>
               <div class="queue-header-actions">
                 <button v-if="downloadStore.isRunning || downloadStore.queue.length > 0" class="btn-queue-stop" @click.stop="downloadStore.clear()">全部取消</button>
@@ -242,12 +308,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Download, PenLine, Settings, ListChecks } from 'lucide-vue-next'
-import { fetchPapers, fetchPapersThisWeek, fetchPapersByDate, getUnanalyzedPaperIds, listCategories, listPapers } from '../../api'
+import { fetchPapers, fetchPapersThisWeek, fetchPapersByDate, getUnanalyzedPaperIds, listCategories, listPapers, listConferencePapers } from '../../api'
 import type { Category } from '../../types/config'
 import { usePapersStore } from '../../stores/papers'
+import { useConferencePapersStore } from '../../stores/conference-papers'
+import { useModeStore } from '../../stores/mode'
 import { useProgressStore } from '../../stores/progress'
 import { useSummaryQueueStore } from '../../stores/summaryQueue'
 import { useAnalysisQueueStore } from '../../stores/analysisQueue'
@@ -257,12 +325,53 @@ import { extractErrorMessage } from '../../utils/format'
 
 const router = useRouter()
 const papersStore = usePapersStore()
+const conferenceStore = useConferencePapersStore()
+const modeStore = useModeStore()
 const progressStore = useProgressStore()
 const queueStore = useSummaryQueueStore()
 const analysisQueueStore = useAnalysisQueueStore()
 const downloadStore = useDownloadQueueStore()
 const toastStore = useToastStore()
 let fetchingToastId = -1
+
+// ── Conference grouping ──────────────────────────────────
+
+const expandedGroup = ref<string | null>(null)
+
+const conferenceGroups = computed(() => {
+  const map = new Map<string, typeof conferenceStore.conferences>()
+  for (const conf of conferenceStore.conferences) {
+    const list = map.get(conf.short_name) || []
+    list.push(conf)
+    map.set(conf.short_name, list)
+  }
+  const groups: { short_name: string; years: typeof conferenceStore.conferences; total: number }[] = []
+  for (const [short_name, years] of map) {
+    years.sort((a, b) => b.year - a.year)
+    groups.push({ short_name, years, total: years.reduce((s, y) => s + y.paper_count, 0) })
+  }
+  groups.sort((a, b) => b.years[0].year - a.years[0].year || a.short_name.localeCompare(b.short_name))
+  return groups
+})
+
+const toggleGroup = (shortName: string) => {
+  expandedGroup.value = expandedGroup.value === shortName ? null : shortName
+}
+
+const selectConferenceYear = (conf: { id: number; short_name: string }) => {
+  expandedGroup.value = conf.short_name
+  conferenceStore.selectConference(conf.id)
+}
+
+// Auto-expand the group of the selected conference
+watch(
+  () => conferenceStore.selectedConferenceId,
+  (id) => {
+    if (id === null) return
+    const conf = conferenceStore.conferences.find(c => c.id === id)
+    if (conf) expandedGroup.value = conf.short_name
+  },
+)
 
 const showQueuePanel = ref(false)
 const activeMenu = ref<string | null>(null)
@@ -474,7 +583,8 @@ const fetchByDateAction = async () => {
 const analyzePapersAction = async () => {
   try {
     const items = await getUnanalyzedPaperIds()
-    const added = queueStore.enqueue(items)
+    const tagged = items.map(i => ({ ...i, conference: false }))
+    const added = queueStore.enqueue(tagged)
     if (added === 0) {
       toastStore.show('提示', '所有未分析论文已在队列中', 'info')
     }
@@ -488,15 +598,15 @@ const summarizeCurrentPapers = async () => {
   try {
     const params = {
       fetchDate: papersStore.selectedDate || undefined,
-      topicId: papersStore.selectedTopicId || undefined,
+      topicIds: papersStore.selectedTopicIds.length > 0 ? [...papersStore.selectedTopicIds] : undefined,
       search: papersStore.searchQuery || undefined,
     }
     const first = await listPapers({ ...params, pageSize: 100 })
-    const items = first.items.map(p => ({ id: p.id, title: p.title }))
+    const items = first.items.map(p => ({ id: p.id, title: p.title, conference: false }))
     const totalPages = Math.ceil(first.total / 100)
     for (let page = 2; page <= totalPages; page++) {
       const result = await listPapers({ ...params, page, pageSize: 100 })
-      items.push(...result.items.map(p => ({ id: p.id, title: p.title })))
+      items.push(...result.items.map(p => ({ id: p.id, title: p.title, conference: false })))
     }
     const added = queueStore.enqueue(items)
     if (added === 0) {
@@ -515,7 +625,46 @@ const summarizeSelectedPapers = () => {
   }
   const items = ids.map(id => {
     const paper = papersStore.papers.find(p => p.id === id)
-    return { id, title: paper?.title || id }
+    return { id, title: paper?.title || id, conference: false }
+  })
+  const added = queueStore.enqueue(items)
+  if (added === 0) {
+    toastStore.show('提示', '选中论文已在队列中', 'info')
+  }
+}
+
+const summarizeConferenceCurrent = async () => {
+  try {
+    const params = {
+      conferenceId: conferenceStore.selectedConferenceId || undefined,
+      tracks: conferenceStore.selectedTracks.length > 0 ? [...conferenceStore.selectedTracks] : undefined,
+      search: conferenceStore.searchQuery || undefined,
+    }
+    const first = await listConferencePapers({ ...params, pageSize: 100 })
+    const items = first.items.map(p => ({ id: p.id, title: p.title, conference: true }))
+    const totalPages = Math.ceil(first.total / 100)
+    for (let page = 2; page <= totalPages; page++) {
+      const result = await listConferencePapers({ ...params, page, pageSize: 100 })
+      items.push(...result.items.map(p => ({ id: p.id, title: p.title, conference: true })))
+    }
+    const added = queueStore.enqueue(items)
+    if (added === 0) {
+      toastStore.show('提示', '当前论文已在队列中', 'info')
+    }
+  } catch (err: unknown) {
+    toastStore.show('获取失败', '获取当前论文失败', 'error', extractErrorMessage(err))
+  }
+}
+
+const summarizeConferenceSelected = () => {
+  const ids = conferenceStore.selectedPaperIds
+  if (ids.length === 0) {
+    toastStore.show('提示', '请先选择论文', 'info')
+    return
+  }
+  const items = ids.map(id => {
+    const paper = conferenceStore.papers.find(p => p.id === id)
+    return { id, title: paper?.title || id, conference: true }
   })
   const added = queueStore.enqueue(items)
   if (added === 0) {
@@ -558,6 +707,10 @@ const summarizeSelectedPapers = () => {
 }
 
 .btn-fetch:hover:not(:disabled) {
+  background: var(--border-primary);
+}
+
+.btn-fetch.active {
   background: var(--border-primary);
 }
 
@@ -632,6 +785,37 @@ const summarizeSelectedPapers = () => {
   background: var(--nav-active);
 }
 
+.conference-group {
+  display: grid;
+  grid-template-rows: 30px 0fr;
+  transition: grid-template-rows 0.2s ease, background-color 0.2s ease;
+  border-radius: 6px;
+  margin: 0 0 2px;
+  background-color: transparent;
+}
+
+.conference-group.expanded {
+  grid-template-rows: 30px 1fr;
+  background-color: var(--sidebar-bg-alt, var(--bg-tertiary));
+}
+
+.group-header {
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.group-years {
+  overflow: hidden;
+}
+
+.group-years-inner {
+  padding: 4px;
+}
+
+.nav-item-sub {
+  margin-bottom: 0;
+}
+
 .nav-label {
   flex: 1;
   font-size: 12px;
@@ -663,7 +847,80 @@ const summarizeSelectedPapers = () => {
 .footer-row {
   display: flex;
   gap: 6px;
-  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-row .btn-icon {
+  margin-left: auto;
+}
+
+.mode-toggle {
+  margin-left: 4px;
+}
+
+.mode-toggle {
+  position: relative;
+  width: 60px;
+  height: 24px;
+  background: #b91c1c;
+  border-radius: 12px;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+}
+
+.mode-toggle.mode-conference {
+  background: #2563eb;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--toggle-thumb-bg);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  z-index: 2;
+  transition: left 0.2s ease;
+}
+
+.mode-toggle.mode-conference .toggle-thumb {
+  left: calc(100% - 21px);
+}
+
+.toggle-label {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+  z-index: 1;
+  pointer-events: none;
+  line-height: 1;
+  transition: opacity 0.2s ease;
+}
+
+.toggle-label-left {
+  left: 21px;
+  opacity: 0;
+}
+
+.toggle-label-right {
+  left: 39px;
+  opacity: 1;
+}
+
+.mode-toggle.mode-conference .toggle-label-left {
+  opacity: 1;
+}
+
+.mode-toggle.mode-conference .toggle-label-right {
+  opacity: 0;
 }
 
 .btn-queue {
@@ -761,10 +1018,14 @@ const summarizeSelectedPapers = () => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 16px;
-  border-bottom: 1px solid var(--border-primary);
   background: var(--panel-header-bg);
   cursor: pointer;
   user-select: none;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.sidebar-queue-panel .queue-panel-header.collapsed {
+  border-bottom: none;
 }
 
 .sidebar-queue-panel .queue-panel-title {
@@ -854,7 +1115,7 @@ const summarizeSelectedPapers = () => {
 }
 
 .sidebar-queue-panel .queue-item-active {
-  background: var(--color-success-bg);
+  background: var(--color-summary-bg);
 }
 
 .sidebar-queue-panel .queue-item-status {
@@ -863,8 +1124,8 @@ const summarizeSelectedPapers = () => {
   justify-self: end;
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-success);
-  background: var(--color-success-bg);
+  color: var(--color-summary);
+  background: var(--color-summary-bg);
   padding: 1px 6px;
   border-radius: 4px;
   white-space: nowrap;

@@ -187,7 +187,7 @@ const handleClearAnalyses = async () => {
 }
 
 .danger-zone {
-  margin-top: 48px;
+  margin-top: 20px;
   padding: 20px;
   border: 1px solid var(--color-error-border);
   border-radius: 8px;

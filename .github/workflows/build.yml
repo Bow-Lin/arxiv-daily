@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: arxiv-daily-${{ matrix.artifact_suffix }}
+          name: sciphant-${{ matrix.artifact_suffix }}
           path: release/
           if-no-files-found: error
 
@@ -71,9 +71,9 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            arxiv-daily-mac-arm64/*
-            arxiv-daily-linux/*
-            arxiv-daily-win/*
+            sciphant-mac-arm64/*
+            sciphant-linux/*
+            sciphant-win/*
           draft: false
           prerelease: false
         env:

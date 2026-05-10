@@ -14,10 +14,9 @@ import {
   deleteCategory,
   clearData,
   clearAnalyses,
-  rebuildPaperTopics,
 } from '../config';
 
-const SCHEMA = `
+const ARXIV_SCHEMA = `
 CREATE TABLE IF NOT EXISTS papers (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -28,18 +27,7 @@ CREATE TABLE IF NOT EXISTS papers (
   published_date TEXT NOT NULL,
   updated_date TEXT NOT NULL,
   categories TEXT NOT NULL,
-  fetched_at TEXT NOT NULL,
-  relevance_topics TEXT
-);
-CREATE TABLE IF NOT EXISTS topics (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE,
-  keywords TEXT NOT NULL,
-  enabled BOOLEAN DEFAULT TRUE
-);
-CREATE TABLE IF NOT EXISTS app_config (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
+  fetched_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,24 +42,56 @@ CREATE TABLE IF NOT EXISTS analyses (
 );
 `;
 
+const SETTINGS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS app_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+`;
+
+const TOPICS_SCHEMA = `
+CREATE TABLE IF NOT EXISTS topics (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  keywords TEXT NOT NULL,
+  enabled BOOLEAN DEFAULT TRUE
+);
+CREATE TABLE IF NOT EXISTS arxiv_paper_topics (
+  paper_id TEXT NOT NULL,
+  topic_id INTEGER NOT NULL,
+  PRIMARY KEY (paper_id, topic_id)
+);
+`;
+
+function createDb(): SqlJsDatabase {
+  return new (globalThis as any).__testSQL.Database();
+}
+
 describe('config commands', () => {
   let SQL: any;
   let db: SqlJsDatabase;
+  let settingsDb: SqlJsDatabase;
+  let topicsDb: SqlJsDatabase;
 
   beforeAll(async () => {
     SQL = await initSqlJs({
       locateFile: () => 'node_modules/sql.js/dist/sql-wasm.wasm',
     });
+    (globalThis as any).__testSQL = SQL;
   });
 
   beforeEach(() => {
-    db = new SQL.Database();
-    db.run(SCHEMA);
+    db = createDb();
+    db.run(ARXIV_SCHEMA);
+    settingsDb = createDb();
+    settingsDb.run(SETTINGS_SCHEMA);
+    topicsDb = createDb();
+    topicsDb.run(TOPICS_SCHEMA);
   });
 
   describe('loadLLMConfig', () => {
     it('returns defaults when no config exists', () => {
-      const config = loadLLMConfig(db);
+      const config = loadLLMConfig(settingsDb);
       expect(config.api_key).toBe('');
       expect(config.base_url).toBe('');
       expect(config.model).toBe('');
@@ -79,11 +99,11 @@ describe('config commands', () => {
     });
 
     it('loads saved LLM config', () => {
-      db.run("INSERT INTO app_config VALUES ('llm.api_key', 'sk-test')");
-      db.run("INSERT INTO app_config VALUES ('llm.base_url', 'https://api.example.com')");
-      db.run("INSERT INTO app_config VALUES ('llm.model', 'gpt-4')");
-      db.run("INSERT INTO app_config VALUES ('llm.temperature', '0.5')");
-      const config = loadLLMConfig(db);
+      settingsDb.run("INSERT INTO app_config VALUES ('llm.api_key', 'sk-test')");
+      settingsDb.run("INSERT INTO app_config VALUES ('llm.base_url', 'https://api.example.com')");
+      settingsDb.run("INSERT INTO app_config VALUES ('llm.model', 'gpt-4')");
+      settingsDb.run("INSERT INTO app_config VALUES ('llm.temperature', '0.5')");
+      const config = loadLLMConfig(settingsDb);
       expect(config.api_key).toBe('sk-test');
       expect(config.base_url).toBe('https://api.example.com');
       expect(config.model).toBe('gpt-4');
@@ -91,29 +111,29 @@ describe('config commands', () => {
     });
 
     it('clamps temperature to [0.0, 2.0]', () => {
-      db.run("INSERT INTO app_config VALUES ('llm.temperature', '5.0')");
-      expect(loadLLMConfig(db).temperature).toBe(2.0);
-      db.run("UPDATE app_config SET value = '-1.0' WHERE key = 'llm.temperature'");
-      expect(loadLLMConfig(db).temperature).toBe(0.0);
+      settingsDb.run("INSERT INTO app_config VALUES ('llm.temperature', '5.0')");
+      expect(loadLLMConfig(settingsDb).temperature).toBe(2.0);
+      settingsDb.run("UPDATE app_config SET value = '-1.0' WHERE key = 'llm.temperature'");
+      expect(loadLLMConfig(settingsDb).temperature).toBe(0.0);
     });
 
     it('handles invalid temperature gracefully', () => {
-      db.run("INSERT INTO app_config VALUES ('llm.temperature', 'abc')");
-      expect(loadLLMConfig(db).temperature).toBe(1.0);
+      settingsDb.run("INSERT INTO app_config VALUES ('llm.temperature', 'abc')");
+      expect(loadLLMConfig(settingsDb).temperature).toBe(1.0);
     });
   });
 
   describe('loadZoteroConfig', () => {
     it('returns defaults when no config exists', () => {
-      const config = loadZoteroConfig(db);
+      const config = loadZoteroConfig(settingsDb);
       expect(config.api_key).toBe('');
       expect(config.user_id).toBe('');
     });
 
     it('loads saved Zotero config', () => {
-      db.run("INSERT INTO app_config VALUES ('zotero.api_key', 'key-123')");
-      db.run("INSERT INTO app_config VALUES ('zotero.user_id', '456')");
-      const config = loadZoteroConfig(db);
+      settingsDb.run("INSERT INTO app_config VALUES ('zotero.api_key', 'key-123')");
+      settingsDb.run("INSERT INTO app_config VALUES ('zotero.user_id', '456')");
+      const config = loadZoteroConfig(settingsDb);
       expect(config.api_key).toBe('key-123');
       expect(config.user_id).toBe('456');
     });
@@ -121,47 +141,47 @@ describe('config commands', () => {
 
   describe('topics', () => {
     it('lists empty topics', () => {
-      expect(listTopics(db)).toEqual([]);
+      expect(listTopics(topicsDb)).toEqual([]);
     });
 
     it('saves and lists a new topic', () => {
-      const topic = saveTopic(db, { name: 'AI', keywords: ['ai', 'ml'], enabled: true });
+      const topic = saveTopic(topicsDb, { name: 'AI', keywords: ['ai', 'ml'], enabled: true });
       expect(topic.id).toBe(1);
       expect(topic.name).toBe('AI');
-      const topics = listTopics(db);
+      const topics = listTopics(topicsDb);
       expect(topics).toHaveLength(1);
       expect(topics[0]).toEqual(topic);
     });
 
     it('updates an existing topic', () => {
-      saveTopic(db, { name: 'AI', keywords: ['ai'], enabled: true });
-      const updated = saveTopic(db, { id: 1, name: 'ML', keywords: ['ml', 'machine learning'], enabled: false });
+      saveTopic(topicsDb, { name: 'AI', keywords: ['ai'], enabled: true });
+      const updated = saveTopic(topicsDb, { id: 1, name: 'ML', keywords: ['ml', 'machine learning'], enabled: false });
       expect(updated.id).toBe(1);
       expect(updated.name).toBe('ML');
       expect(updated.enabled).toBe(false);
-      const topics = listTopics(db);
+      const topics = listTopics(topicsDb);
       expect(topics).toHaveLength(1);
       expect(topics[0].name).toBe('ML');
     });
 
     it('throws on update of non-existent topic', () => {
-      expect(() => saveTopic(db, { id: 999, name: 'X', keywords: [], enabled: true }))
+      expect(() => saveTopic(topicsDb, { id: 999, name: 'X', keywords: [], enabled: true }))
         .toThrow('Topic 999 not found');
     });
 
     it('deletes a topic', () => {
-      saveTopic(db, { name: 'AI', keywords: ['ai'], enabled: true });
-      deleteTopic(db, 1);
-      expect(listTopics(db)).toEqual([]);
+      saveTopic(topicsDb, { name: 'AI', keywords: ['ai'], enabled: true });
+      deleteTopic(topicsDb, 1);
+      expect(listTopics(topicsDb)).toEqual([]);
     });
 
     it('throws on delete of non-existent topic', () => {
-      expect(() => deleteTopic(db, 999)).toThrow('Topic 999 not found');
+      expect(() => deleteTopic(topicsDb, 999)).toThrow('Topic 999 not found');
     });
 
     it('prevents duplicate topic names', () => {
-      saveTopic(db, { name: 'AI', keywords: ['ai'], enabled: true });
-      expect(() => saveTopic(db, { name: 'AI', keywords: ['ml'], enabled: true }))
+      saveTopic(topicsDb, { name: 'AI', keywords: ['ai'], enabled: true });
+      expect(() => saveTopic(topicsDb, { name: 'AI', keywords: ['ml'], enabled: true }))
         .toThrow('UNIQUE constraint failed');
     });
   });
@@ -203,7 +223,7 @@ describe('config commands', () => {
 
   describe('getConfig / updateConfig', () => {
     it('returns defaults when nothing saved', () => {
-      const config = getConfig(db);
+      const config = getConfig(settingsDb);
       expect(config.llm.api_key).toBe('');
       expect(config.output.output_dir).toBe('');
       expect(config.output.auto_save).toBe(false);
@@ -214,13 +234,13 @@ describe('config commands', () => {
 
     it('saves and loads full config', () => {
       updateConfig(
-        db,
+        settingsDb,
         { api_key: 'sk-1', base_url: 'https://api.test.com', model: 'test', temperature: 0.7 },
         { output_dir: '/tmp/out', auto_save: true },
         { api_key: 'z-key', user_id: '123' },
         'dark',
       );
-      const config = getConfig(db);
+      const config = getConfig(settingsDb);
       expect(config.llm.api_key).toBe('sk-1');
       expect(config.llm.temperature).toBe(0.7);
       expect(config.output.output_dir).toBe('/tmp/out');
@@ -232,20 +252,20 @@ describe('config commands', () => {
 
     it('updates partial config without overwriting other fields', () => {
       updateConfig(
-        db,
+        settingsDb,
         { api_key: 'sk-1', base_url: '', model: '', temperature: 1.0 },
         { output_dir: '', auto_save: false },
         undefined,
         'light',
       );
       updateConfig(
-        db,
+        settingsDb,
         { api_key: 'sk-2', base_url: 'https://new.com', model: 'gpt-4', temperature: 0.5 },
         { output_dir: '', auto_save: false },
         undefined,
         undefined,
       );
-      const config = getConfig(db);
+      const config = getConfig(settingsDb);
       expect(config.llm.api_key).toBe('sk-2');
       expect(config.llm.base_url).toBe('https://new.com');
       expect(config.theme).toBe('light');
@@ -253,70 +273,26 @@ describe('config commands', () => {
   });
 
   describe('clearData', () => {
-    it('clears papers and analyses, keeps config', () => {
-      db.run("INSERT INTO papers VALUES ('1', 'T', '[]', '', '', '', '', '', '[]', '', NULL)");
+    it('clears papers and analyses', () => {
+      db.run("INSERT INTO papers VALUES ('1', 'T', '[]', '', '', '', '', '', '[]', '')");
       db.run("INSERT INTO analyses VALUES ('1', 'Summary', 'Analysis')");
-      db.run("INSERT INTO app_config VALUES ('llm.api_key', 'sk')");
-      db.run("INSERT INTO topics VALUES (1, 'AI', '[]', 1)");
 
       clearData(db);
 
       expect(db.exec("SELECT COUNT(*) FROM papers")[0].values[0][0]).toBe(0);
       expect(db.exec("SELECT COUNT(*) FROM analyses")[0].values[0][0]).toBe(0);
-      expect(db.exec("SELECT COUNT(*) FROM app_config")[0].values[0][0]).toBe(1);
-      expect(db.exec("SELECT COUNT(*) FROM topics")[0].values[0][0]).toBe(1);
     });
   });
 
   describe('clearAnalyses', () => {
     it('clears only analyses, keeps papers', () => {
-      db.run("INSERT INTO papers VALUES ('1', 'T', '[]', '', '', '', '', '', '[]', '', NULL)");
+      db.run("INSERT INTO papers VALUES ('1', 'T', '[]', '', '', '', '', '', '[]', '')");
       db.run("INSERT INTO analyses VALUES ('1', 'Summary', 'Analysis')");
 
       clearAnalyses(db);
 
       expect(db.exec("SELECT COUNT(*) FROM papers")[0].values[0][0]).toBe(1);
       expect(db.exec("SELECT COUNT(*) FROM analyses")[0].values[0][0]).toBe(0);
-    });
-  });
-
-  describe('rebuildPaperTopics', () => {
-    it('sets relevance_topics for matching papers', () => {
-      db.run("INSERT INTO topics VALUES (1, 'AI', '[\"ai\", \"machine learning\"]', 1)");
-      db.run("INSERT INTO papers VALUES ('1', 'AI advances', '[]', '', '', '', '', '', '[]', '', NULL)");
-      db.run("INSERT INTO papers VALUES ('2', 'Biology study', '[]', '', '', '', '', '', '[]', '', NULL)");
-
-      const count = rebuildPaperTopics(db);
-      expect(count).toBe(2);
-
-      const result = db.exec("SELECT relevance_topics FROM papers ORDER BY id");
-      expect(JSON.parse(result[0].values[0][0] as string)).toEqual(['AI']);
-      expect(result[0].values[1][0]).toBeNull();
-    });
-
-    it('matches multiple topics', () => {
-      db.run("INSERT INTO topics VALUES (1, 'AI', '[\"ai\"]', 1)");
-      db.run("INSERT INTO topics VALUES (2, 'Robotics', '[\"robot\"]', 1)");
-      db.run("INSERT INTO papers VALUES ('1', 'AI Robot', '[]', '', '', '', '', '', '[]', '', NULL)");
-
-      rebuildPaperTopics(db);
-
-      const topics = JSON.parse(db.exec("SELECT relevance_topics FROM papers")[0].values[0][0] as string);
-      expect(topics).toEqual(['AI', 'Robotics']);
-    });
-
-    it('ignores disabled topics', () => {
-      db.run("INSERT INTO topics VALUES (1, 'AI', '[\"ai\"]', 0)");
-      db.run("INSERT INTO papers VALUES ('1', 'AI paper', '[]', '', '', '', '', '', '[]', '', NULL)");
-
-      rebuildPaperTopics(db);
-
-      expect(db.exec("SELECT relevance_topics FROM papers")[0].values[0][0]).toBeNull();
-    });
-
-    it('returns 0 when no papers exist', () => {
-      db.run("INSERT INTO topics VALUES (1, 'AI', '[\"ai\"]', 1)");
-      expect(rebuildPaperTopics(db)).toBe(0);
     });
   });
 });

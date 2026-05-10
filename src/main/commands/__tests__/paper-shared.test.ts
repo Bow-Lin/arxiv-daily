@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { rowToPaper, execResultToPaperRows } from '../paper-shared';
-import type { PaperWithAnalysis } from '../paper';
 
 describe('execResultToPaperRows', () => {
   it('converts sql.js result to row objects', () => {
@@ -45,17 +44,15 @@ describe('rowToPaper', () => {
       updated_date: '2024-03-15',
       categories: '["cs.AI", "cs.LG"]',
       fetched_at: '2024-03-15',
-      relevance_topics: '["AI"]',
       summary: 'Summary',
       analysis: 'Analysis',
     };
     const paper = rowToPaper(row);
     expect(paper.authors).toEqual(['Alice', 'Bob']);
     expect(paper.categories).toEqual(['cs.AI', 'cs.LG']);
-    expect(paper.relevance_topics).toEqual(['AI']);
   });
 
-  it('handles null relevance_topics', () => {
+  it('handles null summary and analysis', () => {
     const row: Record<string, unknown> = {
       id: '1',
       title: 'T',
@@ -67,12 +64,12 @@ describe('rowToPaper', () => {
       updated_date: '',
       categories: '[]',
       fetched_at: '',
-      relevance_topics: null,
       summary: null,
       analysis: null,
     };
     const paper = rowToPaper(row);
-    expect(paper.relevance_topics).toBeNull();
+    expect(paper.summary).toBeNull();
+    expect(paper.analysis).toBeNull();
   });
 
   it('handles empty arrays', () => {
@@ -87,13 +84,11 @@ describe('rowToPaper', () => {
       updated_date: '',
       categories: '[]',
       fetched_at: '',
-      relevance_topics: '[]',
       summary: null,
       analysis: null,
     };
     const paper = rowToPaper(row);
     expect(paper.authors).toEqual([]);
     expect(paper.categories).toEqual([]);
-    expect(paper.relevance_topics).toEqual([]);
   });
 });

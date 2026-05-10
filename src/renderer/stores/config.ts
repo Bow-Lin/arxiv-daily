@@ -28,51 +28,24 @@ export const useConfigStore = defineStore('config', () => {
   })
   const theme = ref<'light' | 'dark' | 'system'>('system')
 
-  // Rebuild index (debounced + queued)
-  let _rebuildToastId: number | null = null
-  let _rebuildTimer: number | null = null
+  // Rebuild index
   let _rebuilding = false
-  let _rebuildNeeded = false
-
-  async function _doRebuild() {
-    _rebuilding = true
-    try {
-      await rebuildPaperTopics()
-    } catch (err) {
-      console.error('Failed to rebuild paper topics:', err)
-    } finally {
-      _rebuilding = false
-      // If more changes happened during rebuild, run again
-      if (_rebuildNeeded) {
-        _rebuildNeeded = false
-        _doRebuild()
-      } else {
-        const toastStore = useToastStore()
-        if (_rebuildToastId !== null) {
-          toastStore.remove(_rebuildToastId)
-          _rebuildToastId = null
-        }
-        toastStore.show('重建完成', '论文主题索引已更新', 'success')
-      }
-    }
-  }
 
   async function triggerRebuild() {
+    if (_rebuilding) return
+    _rebuilding = true
     const toastStore = useToastStore()
-    if (_rebuildToastId === null) {
-      _rebuildToastId = toastStore.show('重建索引', '正在重建论文主题索引...', 'info', undefined, 0)
+    const toastId = toastStore.show('重建索引', '正在重建论文主题索引...', 'info', undefined, 0)
+    try {
+      await rebuildPaperTopics()
+      toastStore.remove(toastId)
+      toastStore.show('重建完成', '论文主题索引已更新', 'success')
+    } catch (err) {
+      toastStore.remove(toastId)
+      toastStore.show('重建失败', err instanceof Error ? err.message : String(err), 'error')
+    } finally {
+      _rebuilding = false
     }
-    if (_rebuilding) {
-      // Already rebuilding, just mark that another run is needed
-      _rebuildNeeded = true
-      return
-    }
-    // Debounce
-    if (_rebuildTimer) clearTimeout(_rebuildTimer)
-    _rebuildTimer = window.setTimeout(() => {
-      _rebuildTimer = null
-      _doRebuild()
-    }, 300)
   }
 
   // Topics (immediate save)
@@ -83,7 +56,7 @@ export const useConfigStore = defineStore('config', () => {
       return false
     }
     await loadTopics()
-    triggerRebuild()
+    useToastStore().show('添加成功', `主题"${topic.name}"已添加`, 'success')
     return true
   }
 
@@ -96,14 +69,15 @@ export const useConfigStore = defineStore('config', () => {
       return false
     }
     await loadTopics()
-    triggerRebuild()
+    useToastStore().show('保存成功', `主题"${topic.name}"已更新`, 'success')
     return true
   }
 
   const deleteTopic = async (id: number): Promise<void> => {
+    const topic = topics.value.find(t => t.id === id)
     await apiDeleteTopic(id)
     await loadTopics()
-    triggerRebuild()
+    useToastStore().show('删除成功', `主题"${topic?.name}"已删除`, 'success')
   }
 
   // Categories (immediate save)
@@ -189,5 +163,6 @@ export const useConfigStore = defineStore('config', () => {
     addTopic, updateTopic, deleteTopic,
     addCategory, updateCategory, deleteCategory,
     loadTopics, loadCategories, loadConfig,
+    triggerRebuild,
   }
 })

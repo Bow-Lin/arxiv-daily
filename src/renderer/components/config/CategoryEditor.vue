@@ -3,45 +3,48 @@
     <h3>抓取分类</h3>
     <p class="hint">管理从 arXiv 抓取论文的分类（如 cs.CV, cs.RO）</p>
 
-    <div class="category-list">
-      <div v-for="cat in configStore.categories" :key="cat.id" class="category-item">
-        <div class="category-info">
-          <label class="checkbox-label">
-            <input type="checkbox" :checked="cat.enabled" @change="toggleCategory(cat)" />
-            <span class="category-name">{{ cat.name }}</span>
-          </label>
-        </div>
-        <button @click="deleteCategory(cat.id)" class="btn-delete">删除</button>
-      </div>
+    <div class="category-tags">
+      <span
+        v-for="cat in configStore.categories"
+        :key="cat.id"
+        class="category-tag"
+      >
+        {{ cat.name }}
+        <span class="tag-remove" @click.stop="deleteCategory(cat.id)"><X :size="12" /></span>
+      </span>
     </div>
 
-    <div v-if="isAdding" class="category-add">
-      <input v-model="newCategoryName" placeholder="例如: cs.AI" class="add-input" @keyup.enter="saveNew" />
-      <div class="add-actions">
-        <button @click="saveNew" class="btn-save">添加</button>
-        <button @click="isAdding = false" class="btn-cancel">取消</button>
+    <button @click="startAdd" class="btn-add">添加分类</button>
+
+    <!-- Add category dialog -->
+    <div v-if="isAdding" class="dialog-overlay" @click.self="isAdding = false">
+      <div class="dialog">
+        <h4 class="dialog-title">添加分类</h4>
+        <div class="form-field">
+          <label class="field-label">分类名称</label>
+          <input v-model="newCategoryName" placeholder="例如: cs.AI" class="edit-input" @keyup.enter="saveNew" />
+        </div>
+        <div class="edit-actions">
+          <button @click="saveNew" class="btn-save">添加</button>
+          <button @click="isAdding = false" class="btn-cancel">取消</button>
+        </div>
       </div>
     </div>
-    <button v-else @click="isAdding = true; newCategoryName = ''" class="btn-add">+ 添加分类</button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { X } from 'lucide-vue-next'
 import { useConfigStore } from '../../stores/config'
-import type { Category } from '../../types/config'
 
 const configStore = useConfigStore()
 const isAdding = ref(false)
 const newCategoryName = ref('')
 
-const toggleCategory = async (cat: Category) => {
-  try {
-    await configStore.updateCategory(cat.id, { enabled: !cat.enabled })
-  } catch (err) {
-    console.error('Failed to update category:', err)
-    alert('保存失败: ' + (err instanceof Error ? err.message : String(err)))
-  }
+const startAdd = () => {
+  newCategoryName.value = ''
+  isAdding.value = true
 }
 
 const deleteCategory = async (catId: number) => {
@@ -86,61 +89,80 @@ const saveNew = async () => {
   margin-bottom: 16px;
 }
 
-.category-list {
-  margin-bottom: 6px;
-}
-
-.category-item {
+.category-tags {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 12px;
   background: var(--card-bg);
   border: 1px solid var(--border-primary);
   border-radius: 6px;
-  margin-bottom: 6px;
 }
 
-.checkbox-label {
-  display: flex;
+.category-tag {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-}
-
-.category-name {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.btn-delete {
-  padding: 4px 12px;
-  background: transparent;
+  position: relative;
+  padding: 8px 16px;
+  background: var(--card-bg);
   border: 1px solid var(--border-primary);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.category-tag:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.tag-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 1px solid var(--border-primary);
+  opacity: 0;
   cursor: pointer;
-  color: var(--text-tertiary);
+  font-size: 14px;
+  line-height: 1;
+  transition: opacity 0.15s;
 }
 
-.btn-delete:hover {
-  background: var(--color-error-bg);
-  border-color: var(--color-error-border);
-  color: var(--color-error);
+.category-tag:hover .tag-remove {
+  opacity: 1;
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: white;
 }
 
-.category-add {
+.tag-remove:hover {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: white;
+}
+
+.form-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
-.add-input {
+.field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.edit-input {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid var(--border-primary);
@@ -150,43 +172,64 @@ const saveNew = async () => {
   box-sizing: border-box;
 }
 
-.add-actions {
+.edit-actions {
   display: flex;
   gap: 8px;
 }
 
-.btn-save {
+.btn-save,
+.btn-cancel,
+.btn-add {
   padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-save {
   background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
 }
 
 .btn-cancel {
-  padding: 8px 16px;
   background: var(--card-bg);
   border: 1px solid var(--border-primary);
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
 }
 
 .btn-add {
-  width: 100%;
-  padding: 8px 16px;
   background: var(--card-bg);
-  border: 1px dashed var(--border-secondary);
-  border-radius: 4px;
-  font-size: 14px;
-  color: var(--text-tertiary);
-  cursor: pointer;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
 }
 
 .btn-add:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: var(--bg-tertiary);
+}
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  padding: 24px;
+  width: 400px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 16px;
 }
 </style>

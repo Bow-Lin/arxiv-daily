@@ -47,15 +47,42 @@ interface PaperWithAnalysis {
   updated_date: string
   categories: string[]
   fetched_at: string
-  relevance_topics?: string[] | null
   summary?: string | null
   analysis?: string | null
+}
+
+interface ConferencePaper {
+  id: string
+  conference_id: number
+  short_name: string
+  year: number
+  full_name: string
+  title: string
+  authors: string[]
+  abstract: string
+  pdf_url: string | null
+  supp_url: string | null
+  arxiv_url: string | null
+  bibtex: string | null
+  pages: string | null
+  track: string | null
+  detail_url: string | null
+  summary: string | null
+  analysis: string | null
+}
+
+interface ConferenceInfo {
+  id: number
+  short_name: string
+  year: number
+  full_name: string
+  paper_count: number
 }
 
 interface ElectronAPI {
   // Paper
   listPapers: (params: {
-    topicId?: number
+    topicIds?: number[]
     search?: string
     fetchDate?: string
     page?: number
@@ -126,6 +153,32 @@ interface ElectronAPI {
   // Events
   onSummaryProgress: (callback: (data: any) => void) => () => void
   onAnalysisProgress: (callback: (data: any) => void) => () => void
+
+  // Conference
+  listConferences: () => Promise<ConferenceInfo[]>
+  listConferencePapers: (params: {
+    conferenceId?: number | null
+    search?: string
+    tracks?: string[]
+    topicIds?: number[]
+    page?: number
+    pageSize?: number
+  }) => Promise<{ items: ConferencePaper[]; total: number; page: number; page_size: number }>
+  getConferencePaperDetail: (paperId: string) => Promise<ConferencePaper>
+  listConferenceTracks: (conferenceId: number) => Promise<{ track: string; count: number }[]>
+  conferenceSummarizePaper: (paperId: string, skipIfAnalyzed?: boolean) => Promise<{ success: boolean; summary: string | null; skipped?: boolean; cancelled?: boolean }>
+  conferenceStopSummary: () => Promise<{ success: boolean }>
+  conferenceGetUnanalyzedIds: () => Promise<{ id: string; title: string }[]>
+  conferenceAnalyzeFullPaper: (id: string) => Promise<{ success: boolean; cancelled?: boolean }>
+  conferenceGetPaperAnalysis: (id: string) => Promise<string | null>
+  conferenceStopAnalysis: () => Promise<{ success: boolean }>
+  conferenceDownloadPdf: (id: string) => Promise<string>
+  conferenceOpenPdf: (id: string) => Promise<void>
+  conferenceIsPdfCached: (id: string) => Promise<boolean>
+  conferenceDeletePdf: (id: string) => Promise<void>
+  conferenceDeleteSummary: (id: string) => Promise<void>
+  conferenceDeleteAnalysis: (id: string) => Promise<void>
+  conferenceExportToZotero: (paperId: string, collectionKey: string, summaryHtml?: string, analysisHtml?: string) => Promise<{ success: boolean; itemKey: string }>
 }
 
 interface Window {

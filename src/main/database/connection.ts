@@ -79,13 +79,12 @@ export class Database {
 
   private runSchemaUpdates(): void {
     if (!this.db) throw new Error('Database not initialized');
-    this.db.run("DELETE FROM app_config WHERE key LIKE 'proxy.%'");
     const cols = this.db.exec("PRAGMA table_info(papers)");
     if (cols.length > 0) {
       const colNames = cols[0].values.map(r => r[1] as string);
       if (!colNames.includes('updated_date')) {
         this.db.run("ALTER TABLE papers ADD COLUMN updated_date TEXT NOT NULL DEFAULT ''");
-        this.db.run('UPDATE papers SET updated_date = published_date WHERE updated_date = "" OR updated_date IS NULL');
+        this.db.run("UPDATE papers SET updated_date = published_date WHERE updated_date = \"\" OR updated_date IS NULL");
       }
     }
   }
@@ -101,7 +100,9 @@ export class Database {
     if (!this.db) throw new Error('Database not initialized');
     const data = this.db.export();
     const buffer = Buffer.from(data);
-    await fs.writeFile(this.dbPath, buffer);
+    const tmpPath = this.dbPath + '.tmp';
+    await fs.writeFile(tmpPath, buffer);
+    await fs.rename(tmpPath, this.dbPath);
   }
 
   async close(): Promise<void> {
@@ -113,5 +114,19 @@ export class Database {
         this.db = null;
       }
     }
+  }
+
+  /**
+   * Create a read-only Database from an existing file.
+   * Skips migrations and save — used for bundled data like conference papers.
+   */
+  static async fromReadOnlyFile(dbPath: string, wasmDir: string): Promise<Database> {
+    const instance = new Database(dbPath);
+    const SQL = await initSqlJs({
+      locateFile: (file: string) => join(wasmDir, file),
+    });
+    const buffer = await fs.readFile(dbPath);
+    instance.db = new SQL.Database(buffer);
+    return instance;
   }
 }

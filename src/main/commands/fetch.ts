@@ -1,6 +1,6 @@
 import type { Database as SqlJsDatabase } from 'sql.js';
 import { fetchFromApi, savePapers, todayStr, daysAgoStr } from '../services/arxiv-api';
-import { rebuildPaperTopics } from './config';
+import { rebuildArxivPaperTopics } from './rebuild-arxiv-topics';
 
 export interface FailedCategory {
   category: string;
@@ -35,6 +35,7 @@ export interface FetchPapersByDateResult {
 
 async function fetchPapersInRange(
   db: SqlJsDatabase,
+  paperTopicsDb: SqlJsDatabase,
   startDate: string,
   endDate: string,
   categories: string[],
@@ -62,7 +63,7 @@ async function fetchPapersInRange(
 
   // Refresh topic matching for all papers
   try {
-    rebuildPaperTopics(db);
+    rebuildArxivPaperTopics(db, paperTopicsDb);
   } catch (e) {
     console.error('[fetch] Failed to refresh topics:', e);
   }
@@ -82,7 +83,7 @@ function resolveCategories(db: SqlJsDatabase, categories: string[]): string[] {
 /**
  * Fetch latest papers (yesterday + today) via arXiv API.
  */
-export async function fetchPapers(db: SqlJsDatabase, categories: string[]): Promise<FetchPapersResult> {
+export async function fetchPapers(db: SqlJsDatabase, paperTopicsDb: SqlJsDatabase, categories: string[]): Promise<FetchPapersResult> {
   const cats = resolveCategories(db, categories);
   if (cats.length === 0) {
     return { success: false, new_count: 0, existing_count: 0, failed_categories: [], failed_details: [] };
@@ -90,7 +91,7 @@ export async function fetchPapers(db: SqlJsDatabase, categories: string[]): Prom
 
   const startDate = daysAgoStr(1);
   const endDate = todayStr();
-  const { new_count, total_count, failed_categories, failed_details } = await fetchPapersInRange(db, startDate, endDate, cats);
+  const { new_count, total_count, failed_categories, failed_details } = await fetchPapersInRange(db, paperTopicsDb, startDate, endDate, cats);
 
   return {
     success: true,
@@ -104,7 +105,7 @@ export async function fetchPapers(db: SqlJsDatabase, categories: string[]): Prom
 /**
  * Fetch this week's papers via arXiv API (last 7 days including today).
  */
-export async function fetchPapersThisWeek(db: SqlJsDatabase, categories: string[]): Promise<FetchPapersResult> {
+export async function fetchPapersThisWeek(db: SqlJsDatabase, paperTopicsDb: SqlJsDatabase, categories: string[]): Promise<FetchPapersResult> {
   const cats = resolveCategories(db, categories);
   if (cats.length === 0) {
     return { success: false, new_count: 0, existing_count: 0, failed_categories: [], failed_details: [] };
@@ -112,7 +113,7 @@ export async function fetchPapersThisWeek(db: SqlJsDatabase, categories: string[
 
   const startDate = daysAgoStr(6);
   const endDate = todayStr();
-  const { new_count, total_count, failed_categories, failed_details } = await fetchPapersInRange(db, startDate, endDate, cats);
+  const { new_count, total_count, failed_categories, failed_details } = await fetchPapersInRange(db, paperTopicsDb, startDate, endDate, cats);
 
   return {
     success: true,
@@ -128,6 +129,7 @@ export async function fetchPapersThisWeek(db: SqlJsDatabase, categories: string[
  */
 export async function fetchPapersByDate(
   db: SqlJsDatabase,
+  paperTopicsDb: SqlJsDatabase,
   params: FetchPapersByDateParams,
 ): Promise<FetchPapersByDateResult> {
   const { startDate, endDate } = params;
@@ -137,7 +139,7 @@ export async function fetchPapersByDate(
     return { success: false, local_count: 0, new_count: 0, total_count: 0, failed_categories: [], failed_details: [] };
   }
 
-  const { new_count, total_count, failed_categories, failed_details } = await fetchPapersInRange(db, startDate, endDate, cats);
+  const { new_count, total_count, failed_categories, failed_details } = await fetchPapersInRange(db, paperTopicsDb, startDate, endDate, cats);
 
   return {
     success: true,

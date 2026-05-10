@@ -41,6 +41,9 @@ export interface CreateItemPayload {
   extra: string;
   repository: string;
   archiveID: string;
+  proceedingsTitle?: string;
+  conferenceName?: string;
+  pages?: string;
   creators: { creatorType: string; firstName: string; lastName: string }[];
   tags: { tag: string }[];
   collections: string[];

@@ -11,7 +11,6 @@ export interface PaperWithAnalysis {
   updated_date: string;
   categories: string[];
   fetched_at: string;
-  relevance_topics: string[] | null;
   summary: string | null;
   analysis: string | null;
 }
@@ -40,7 +39,8 @@ import { BASE_SQL, rowToPaper, execResultToPaperRows } from './paper-shared';
 /**
  * List papers with pagination and filtering.
  */
-export function listPapers(db: SqlJsDatabase, params: {
+export function listPapers(db: SqlJsDatabase, paperTopicsDb: SqlJsDatabase | null, params: {
+  topicIds?: number[];
   topicId?: number;
   search?: string;
   fetchDate?: string;
@@ -50,15 +50,6 @@ export function listPapers(db: SqlJsDatabase, params: {
   const page = Math.max(params.page ?? 1, 1);
   const pageSize = Math.min(Math.max(params.pageSize ?? 20, 1), 100);
   const offset = (page - 1) * pageSize;
-
-  // Get topic name if filtering by topic
-  let topicName: string | null = null;
-  if (params.topicId != null) {
-    const rows = db.exec('SELECT name FROM topics WHERE id = ?', [params.topicId]);
-    if (rows.length > 0 && rows[0].values.length > 0) {
-      topicName = rows[0].values[0][0] as string;
-    }
-  }
 
   // Build WHERE clauses dynamically
   const conditions: string[] = [];
@@ -74,9 +65,26 @@ export function listPapers(db: SqlJsDatabase, params: {
     conditions.push('date(p.updated_date) = ?');
     bindValues.push(params.fetchDate);
   }
-  if (topicName) {
-    conditions.push('EXISTS (SELECT 1 FROM json_each(p.relevance_topics) WHERE value = ?)');
-    bindValues.push(topicName);
+
+  // Topic filtering (support both topicIds array and legacy topicId)
+  const topicIds = params.topicIds && params.topicIds.length > 0
+    ? params.topicIds
+    : params.topicId != null ? [params.topicId] : [];
+
+  if (topicIds.length > 0 && paperTopicsDb) {
+    const placeholders = topicIds.map(() => '?').join(',');
+    const ptResults = paperTopicsDb.exec(
+      `SELECT DISTINCT paper_id FROM arxiv_paper_topics WHERE topic_id IN (${placeholders})`,
+      topicIds,
+    );
+    if (ptResults.length > 0 && ptResults[0].values.length > 0) {
+      const paperIds = ptResults[0].values.map(r => r[0] as string);
+      conditions.push(`p.id IN (${paperIds.map(() => '?').join(',')})`);
+      bindValues.push(...paperIds);
+    } else {
+      // No matching papers
+      conditions.push('1 = 0');
+    }
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -143,16 +151,17 @@ export function listFetchDates(db: SqlJsDatabase): FetchDate[] {
 }
 
 /**
- * Count papers per topic using json_each for exact matching.
+ * Count papers per topic using arxiv_paper_topics junction table.
  */
-export function listTopicCounts(db: SqlJsDatabase): TopicCount[] {
-  const results = db.exec(
-    `SELECT t.id, t.name, COUNT(p.id) as cnt
+export function listTopicCounts(paperTopicsDb: SqlJsDatabase): TopicCount[] {
+  const results = paperTopicsDb.exec(
+    `SELECT t.id, t.name, COALESCE(pt.cnt, 0) as cnt
      FROM topics t
-     LEFT JOIN papers p ON EXISTS (
-         SELECT 1 FROM json_each(p.relevance_topics) WHERE value = t.name
-     )
-     GROUP BY t.id, t.name
+     LEFT JOIN (
+       SELECT topic_id, COUNT(DISTINCT paper_id) as cnt
+       FROM arxiv_paper_topics
+       GROUP BY topic_id
+     ) pt ON pt.topic_id = t.id
      ORDER BY cnt DESC`,
   );
   if (results.length === 0) return [];

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { getPaperDetail } from '../api'
+import { getConferencePaperDetail, getPaperDetail } from '../api'
 import { usePapersStore } from './papers'
+import { useConferencePapersStore } from './conference-papers'
 import { useProgressStore } from './progress'
 import { useToastStore } from './toast'
 import { createProcessingQueue, type QueueItem } from './createProcessingQueue'
@@ -16,19 +17,35 @@ export const useSummaryQueueStore = defineStore('summaryQueue', () => {
       progressStore.currentPaper = item.title
       updateProgress()
 
-      const result = await window.api.summarizePaper(item.id, false)
+      let result: { success: boolean; summary?: string | null; cancelled?: boolean }
+      if (item.conference) {
+        result = await window.api.conferenceSummarizePaper(item.id, false)
+      } else {
+        result = await window.api.summarizePaper(item.id, false)
+      }
       if (result.cancelled) return result
 
       useToastStore().show('总结完成', item.title, 'success')
 
       try {
-        const papersStore = usePapersStore()
-        const updated = await getPaperDetail(item.id)
-        const idx = papersStore.papers.findIndex(p => p.id === item.id)
-        if (idx !== -1) {
-          papersStore.papers.splice(idx, 1, updated)
-        } else if (papersStore.selectedPaperIds.includes(item.id)) {
-          papersStore.selectPaper(item.id)
+        if (item.conference) {
+          const conferenceStore = useConferencePapersStore()
+          const updated = await getConferencePaperDetail(item.id)
+          const idx = conferenceStore.papers.findIndex(p => p.id === item.id)
+          if (idx !== -1) {
+            conferenceStore.papers.splice(idx, 1, updated)
+          } else if (conferenceStore.selectedPaperIds.includes(item.id)) {
+            conferenceStore.selectPaper(item.id)
+          }
+        } else {
+          const papersStore = usePapersStore()
+          const updated = await getPaperDetail(item.id)
+          const idx = papersStore.papers.findIndex(p => p.id === item.id)
+          if (idx !== -1) {
+            papersStore.papers.splice(idx, 1, updated)
+          } else if (papersStore.selectedPaperIds.includes(item.id)) {
+            papersStore.selectPaper(item.id)
+          }
         }
       } catch {
         // Non-fatal: list refresh failed
@@ -36,9 +53,17 @@ export const useSummaryQueueStore = defineStore('summaryQueue', () => {
 
       updateProgress()
     },
-    stopApi: () => window.api.stopSummary(),
+    stopApi: () => {
+      return queue.currentItem.value?.conference
+        ? window.api.conferenceStopSummary()
+        : window.api.stopSummary()
+    },
     onCompleteAll: async () => {
-      await usePapersStore().loadPapers()
+      if (queue.currentItem.value?.conference) {
+        await useConferencePapersStore().loadPapers()
+      } else {
+        await usePapersStore().loadPapers()
+      }
     },
   })
 

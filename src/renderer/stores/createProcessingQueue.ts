@@ -5,6 +5,7 @@ import { truncate, extractErrorMessage } from '../utils/format'
 export interface QueueItem {
   id: string
   title: string
+  conference?: boolean
 }
 
 export interface ProcessingQueueOptions {
@@ -16,6 +17,7 @@ export interface ProcessingQueueOptions {
 
 export function createProcessingQueue({ name, processItem, stopApi, onCompleteAll }: ProcessingQueueOptions) {
   const queue = ref<QueueItem[]>([])
+  const currentItem = ref<QueueItem | null>(null)
   const currentPaperId = ref<string | null>(null)
   const currentPaperTitle = ref('')
   const isRunning = ref(false)
@@ -25,13 +27,13 @@ export function createProcessingQueue({ name, processItem, stopApi, onCompleteAl
   const initialTotal = ref(0)
 
   function isInQueue(paperId: string): boolean {
-    return currentPaperId.value === paperId || queue.value.some(item => item.id === paperId)
+    return currentItem.value?.id === paperId || queue.value.some(item => item.id === paperId)
   }
 
   function enqueue(items: QueueItem[]): number {
     const existing = new Set([
       ...queue.value.map(i => i.id),
-      ...(currentPaperId.value ? [currentPaperId.value] : []),
+      ...(currentItem.value ? [currentItem.value.id] : []),
     ])
     let added = 0
     for (const item of items) {
@@ -66,7 +68,7 @@ export function createProcessingQueue({ name, processItem, stopApi, onCompleteAl
 
   function clear(): void {
     stopRequested.value = true
-    const count = queue.value.length + (currentPaperId.value ? 1 : 0)
+    const count = queue.value.length + (currentItem.value ? 1 : 0)
     if (count > 0) {
       useToastStore().show('已取消', `已取消 ${count} 篇待处理论文`, 'info')
     }
@@ -85,6 +87,7 @@ export function createProcessingQueue({ name, processItem, stopApi, onCompleteAl
       while (queue.value.length > 0 && !stopRequested.value) {
         const [item, ...rest] = queue.value
         queue.value = rest
+        currentItem.value = item
         currentPaperId.value = item.id
         currentPaperTitle.value = item.title
 
@@ -117,6 +120,7 @@ export function createProcessingQueue({ name, processItem, stopApi, onCompleteAl
         await onCompleteAll()
       }
     } finally {
+      currentItem.value = null
       currentPaperId.value = null
       currentPaperTitle.value = ''
       isRunning.value = false
@@ -125,6 +129,7 @@ export function createProcessingQueue({ name, processItem, stopApi, onCompleteAl
 
   return {
     queue,
+    currentItem,
     currentPaperId,
     currentPaperTitle,
     isRunning,

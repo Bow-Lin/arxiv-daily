@@ -6,10 +6,12 @@ import { truncate, extractErrorMessage } from '../utils/format'
 export interface DownloadItem {
   id: string
   title: string
+  conference?: boolean
 }
 
 export const useDownloadQueueStore = defineStore('downloadQueue', () => {
   const queue = ref<DownloadItem[]>([])
+  const currentItem = ref<DownloadItem | null>(null)
   const currentPaperId = ref<string | null>(null)
   const currentPaperTitle = ref('')
   const currentProgress = ref(0)
@@ -55,13 +57,20 @@ export const useDownloadQueueStore = defineStore('downloadQueue', () => {
     queue.value = []
   }
 
+  function isConferenceItem(paperId: string): boolean {
+    if (currentItem.value?.id === paperId) return !!currentItem.value.conference
+    return queue.value.find(i => i.id === paperId)?.conference ?? false
+  }
+
   async function waitForDownload(paperId: string): Promise<string> {
     // Already have a completed result
     const completed = completedPaths.get(paperId)
     if (completed) return completed
 
     // Check if already cached
-    const cached = await window.api.isPdfCached(paperId)
+    const cached = isConferenceItem(paperId)
+      ? await window.api.conferenceIsPdfCached(paperId)
+      : await window.api.isPdfCached(paperId)
     if (cached) return paperId
 
     // Register as waiter
@@ -109,6 +118,7 @@ export const useDownloadQueueStore = defineStore('downloadQueue', () => {
       while (queue.value.length > 0) {
         const [item, ...rest] = queue.value
         queue.value = rest
+        currentItem.value = item
         currentPaperId.value = item.id
         currentPaperTitle.value = item.title
         currentProgress.value = 0
@@ -123,7 +133,11 @@ export const useDownloadQueueStore = defineStore('downloadQueue', () => {
         })
 
         try {
-          await window.api.downloadPdf(item.id)
+          if (item.conference) {
+            await window.api.conferenceDownloadPdf(item.id)
+          } else {
+            await window.api.downloadPdf(item.id)
+          }
           currentProgress.value = 100
           resolveWaiters(item.id, item.id)
         } catch (err) {
@@ -136,6 +150,7 @@ export const useDownloadQueueStore = defineStore('downloadQueue', () => {
         }
       }
     } finally {
+      currentItem.value = null
       currentPaperId.value = null
       currentPaperTitle.value = ''
       currentProgress.value = 0
