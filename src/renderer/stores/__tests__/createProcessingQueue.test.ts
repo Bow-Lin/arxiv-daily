@@ -34,6 +34,7 @@ describe('createProcessingQueue', () => {
     });
 
     it('deduplicates currently processing item', () => {
+      queue.currentItem.value = { id: '1', title: 'A' };
       queue.currentPaperId.value = '1';
       const added = queue.enqueue([{ id: '1', title: 'A' }, { id: '2', title: 'B' }]);
       expect(added).toBe(1);
@@ -53,6 +54,7 @@ describe('createProcessingQueue', () => {
     });
 
     it('returns true for currently processing item', () => {
+      queue.currentItem.value = { id: '1', title: 'A' };
       queue.currentPaperId.value = '1';
       expect(queue.isInQueue('1')).toBe(true);
     });
