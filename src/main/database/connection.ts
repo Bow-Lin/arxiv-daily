@@ -79,6 +79,16 @@ export class Database {
 
   private runSchemaUpdates(): void {
     if (!this.db) throw new Error('Database not initialized');
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS _schema_patches (
+        name TEXT PRIMARY KEY
+      )
+    `);
+
+    const already = this.db.exec("SELECT 1 FROM _schema_patches WHERE name = 'updated_date'");
+    if (already.length > 0) return;
+
     const cols = this.db.exec("PRAGMA table_info(papers)");
     if (cols.length > 0) {
       const colNames = cols[0].values.map(r => r[1] as string);
@@ -87,6 +97,7 @@ export class Database {
         this.db.run("UPDATE papers SET updated_date = published_date WHERE updated_date = \"\" OR updated_date IS NULL");
       }
     }
+    this.db.run("INSERT INTO _schema_patches (name) VALUES ('updated_date')");
   }
 
   getDb(): SqlJsDatabase {

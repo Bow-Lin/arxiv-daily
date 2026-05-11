@@ -4,6 +4,7 @@
     <p class="hint">管理从 arXiv 抓取论文的分类（如 cs.CV, cs.RO）</p>
 
     <div class="category-tags">
+      <span v-if="configStore.categories.length === 0" class="empty-hint">未设置抓取分类</span>
       <span
         v-for="cat in configStore.categories"
         :key="cat.id"
@@ -21,8 +22,8 @@
       <div class="dialog">
         <h4 class="dialog-title">添加分类</h4>
         <div class="form-field">
-          <label class="field-label">分类名称</label>
-          <input v-model="newCategoryName" placeholder="例如: cs.AI" class="edit-input" @keyup.enter="saveNew" />
+          <label class="field-label">分类名称（例如：cs.AI，多个分类使用逗号隔开）</label>
+          <input v-model="newCategoryName" placeholder="" class="edit-input" @keyup.enter="saveNew" />
         </div>
         <div class="edit-actions">
           <button @click="saveNew" class="btn-save">添加</button>
@@ -57,10 +58,12 @@ const deleteCategory = async (catId: number) => {
 }
 
 const saveNew = async () => {
-  const name = newCategoryName.value.trim()
-  if (!name) return
+  const names = newCategoryName.value.split(',').map(s => s.trim()).filter(Boolean)
+  if (names.length === 0) return
   try {
-    await configStore.addCategory(name)
+    for (const name of names) {
+      await configStore.addCategory(name)
+    }
     isAdding.value = false
     newCategoryName.value = ''
   } catch (err) {
@@ -111,6 +114,11 @@ const saveNew = async () => {
   font-size: 14px;
   color: var(--text-secondary);
   cursor: default;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: var(--text-tertiary);
 }
 
 .category-tag:hover {

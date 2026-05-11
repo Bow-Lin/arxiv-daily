@@ -4,6 +4,7 @@ import { Database } from './database/connection';
 import { ConferenceAnalysesDb } from './database/conference-analyses';
 import { SettingsDb } from './database/settings';
 import { PaperTopicsDb } from './database/paper-topics';
+import { migrateFromOldAppData, migrateToSplitDatabases } from './database/migrations';
 import { registerIpcHandlers } from './ipc-handlers';
 
 let mainWindow: BrowserWindow | null = null;
@@ -78,99 +79,6 @@ function createWindow(): BrowserWindow {
   return mainWindow;
 }
 
-/**
- * Migrate data from arxiv_papers.db to the new settings.db and paper_topics.db.
- * Called once on first launch after the refactor.
- */
-function migrateToSplitDatabases(
-  arxivDb: Database,
-  newSettingsDb: SettingsDb,
-  newPaperTopicsDb: PaperTopicsDb,
-): void {
-  const sqlDb = arxivDb.getDb();
-  const sqlSettingsDb = newSettingsDb.getDb();
-  const sqlPaperTopicsDb = newPaperTopicsDb.getDb();
-
-  // Check if topics table exists in arxiv db (i.e., migration needed)
-  const tableCheck = sqlDb.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='topics'");
-  if (tableCheck.length === 0 || tableCheck[0].values.length === 0) {
-    return; // Already migrated or fresh install
-  }
-
-  // Migrate topics
-  const topicRows = sqlDb.exec('SELECT id, name, keywords, enabled FROM topics');
-  if (topicRows.length > 0) {
-    for (const row of topicRows[0].values) {
-      sqlPaperTopicsDb.run(
-        'INSERT OR IGNORE INTO topics (id, name, keywords, enabled) VALUES (?, ?, ?, ?)',
-        [row[0], row[1], row[2], row[3]],
-      );
-    }
-    console.log(`[migration] Migrated ${topicRows[0].values.length} topics`);
-  }
-
-  // Migrate app_config
-  const configRows = sqlDb.exec('SELECT key, value FROM app_config');
-  if (configRows.length > 0) {
-    for (const row of configRows[0].values) {
-      sqlSettingsDb.run(
-        'INSERT OR IGNORE INTO app_config (key, value) VALUES (?, ?)',
-        [row[0], row[1]],
-      );
-    }
-    console.log(`[migration] Migrated ${configRows[0].values.length} config entries`);
-  }
-
-  // Migrate relevance_topics to arxiv_paper_topics junction table
-  const paperRows = sqlDb.exec(
-    `SELECT id, relevance_topics FROM papers WHERE relevance_topics IS NOT NULL AND relevance_topics != 'null' AND relevance_topics != ''`,
-  );
-  if (paperRows.length > 0) {
-    let count = 0;
-    sqlPaperTopicsDb.run('BEGIN TRANSACTION');
-    for (const row of paperRows[0].values) {
-      const paperId = row[0] as string;
-      const topicsJson = row[1] as string;
-      try {
-        const topicNames: string[] = JSON.parse(topicsJson);
-        for (const name of topicNames) {
-          // Look up topic_id by name
-          const idResults = sqlPaperTopicsDb.exec('SELECT id FROM topics WHERE name = ?', [name]);
-          if (idResults.length > 0 && idResults[0].values.length > 0) {
-            const topicId = idResults[0].values[0][0] as number;
-            sqlPaperTopicsDb.run(
-              'INSERT OR IGNORE INTO arxiv_paper_topics (paper_id, topic_id) VALUES (?, ?)',
-              [paperId, topicId],
-            );
-            count++;
-          }
-        }
-      } catch {
-        // Skip malformed JSON
-      }
-    }
-    sqlPaperTopicsDb.run('COMMIT');
-    console.log(`[migration] Migrated ${count} paper-topic associations`);
-  }
-
-  // Drop relevance_topics column from papers
-  try {
-    sqlDb.run('ALTER TABLE papers DROP COLUMN relevance_topics');
-    console.log('[migration] Dropped relevance_topics column');
-  } catch {
-    // Column may not exist or SQLite version doesn't support DROP COLUMN
-    console.log('[migration] Could not drop relevance_topics column (may not exist)');
-  }
-
-  // Drop topics and app_config from arxiv db (keep categories)
-  try { sqlDb.run('DROP TABLE topics'); } catch { /* ignore */ }
-  try { sqlDb.run('DROP TABLE app_config'); } catch { /* ignore */ }
-  console.log('[migration] Dropped topics and app_config tables from arxiv db');
-
-  // Save the new databases
-  // Note: save will be called by the caller or on quit
-}
-
 app.setName('SciPhant');
 
 app.whenReady().then(async () => {
@@ -196,34 +104,35 @@ app.whenReady().then(async () => {
     { role: 'windowMenu' as const },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+
+  // Step 1: Migrate data files from old app name ("arXiv Daily") directory
+  migrateFromOldAppData();
+
+  // Step 2: Initialize all databases
   db = new Database(join(app.getPath('userData'), 'arxiv_papers.db'));
   await db.init();
 
-  // Load read-only conference database (bundled with app)
   const conferenceDbPath = app.isPackaged
     ? join(process.resourcesPath, 'conference_papers.db')
     : join(app.getAppPath(), 'resources', 'conference_papers.db');
   conferenceDb = await Database.fromReadOnlyFile(conferenceDbPath, join(__dirname, 'wasm'));
 
-  // Writable database for conference paper analyses
   conferenceAnalysesDb = new ConferenceAnalysesDb(join(app.getPath('userData'), 'conference_analyses.db'));
   await conferenceAnalysesDb.init();
 
-  // Settings database (migrated from arxiv_papers.db)
   settingsDb = new SettingsDb(join(app.getPath('userData'), 'settings.db'));
   await settingsDb.init();
 
-  // Paper topics database (topics + junction tables)
   paperTopicsDb = new PaperTopicsDb(join(app.getPath('userData'), 'paper_topics.db'));
   await paperTopicsDb.init();
 
-  // Migrate data from arxiv_papers.db to new databases
-  migrateToSplitDatabases(db, settingsDb, paperTopicsDb);
-
-  // Save migrated data
-  await settingsDb.save();
-  await paperTopicsDb.save();
-  await db.save();
+  // Step 3: Migrate schema data (topics, config) from arxiv_papers.db to split databases
+  const migrated = migrateToSplitDatabases(db, settingsDb, paperTopicsDb);
+  if (migrated) {
+    await settingsDb.save();
+    await paperTopicsDb.save();
+    await db.save();
+  }
 
   registerIpcHandlers(db, conferenceDb, conferenceAnalysesDb, settingsDb, paperTopicsDb, createWindow());
 
