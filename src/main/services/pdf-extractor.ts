@@ -1,6 +1,6 @@
 import { net } from 'electron';
 import { PDFParse } from 'pdf-parse';
-import { mkdir, readFile, access, open } from 'fs/promises';
+import { mkdir, readFile, access, open, rename, unlink } from 'fs/promises';
 import { join } from 'path';
 import { classifyDirectNetworkError } from './net-fetch';
 
@@ -39,8 +39,10 @@ async function downloadStreaming(
 
   const total = parseInt(response.headers.get('content-length') || '', 10) || undefined;
   const reader = response.body!.getReader();
-  const file = await open(filePath, 'w');
+  const tmpPath = `${filePath}.tmp`;
+  const file = await open(tmpPath, 'w');
   let loaded = 0;
+  let fileClosed = false;
 
   try {
     while (true) {
@@ -50,8 +52,16 @@ async function downloadStreaming(
       loaded += value.length;
       onProgress?.(loaded, total);
     }
-  } finally {
+
     await file.close();
+    fileClosed = true;
+    await rename(tmpPath, filePath);
+  } catch (e) {
+    if (!fileClosed) {
+      await file.close().catch(() => {});
+    }
+    await unlink(tmpPath).catch(() => {});
+    throw e;
   }
 }
 
