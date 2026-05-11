@@ -1,5 +1,6 @@
 .env
 *.db
+!resources/conference_papers.db
 *.sqlite
 
 # Node
